@@ -5,7 +5,7 @@ export default function Dashboard() {
     { name: "Sleep 8 hours", status: "Pending" },
   ];
 
-  const summaryCards = [
+  const summaryCards = [ 
     { title: "Current Streak", value: "4 days" },
     { title: "Completion Rate", value: "75%" },
     { title: "Habits Completed", value: "6 / 8" },
