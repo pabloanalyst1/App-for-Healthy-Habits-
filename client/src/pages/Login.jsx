@@ -7,26 +7,31 @@ import "../styles/auth.css";
 export default function Login() {
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
     navigate("/dashboard");
   };
 
   return (
     <AuthCard
       title="Healthy Habits"
-      subtitle="Welcome back. Log in to continue building your healthy routine."
+      subtitle="Sign in to manage your goals, review your progress, and continue building a healthier routine."
       footer={
         <p>
           Don&apos;t have an account?{" "}
-          <span onClick={() => navigate("/register")}>Register</span>
+          <span onClick={() => navigate("/register")}>Create one here</span>
         </p>
       }
     >
+      <div className="auth-badge-row">
+        <span className="auth-badge">Wellness Tracker</span>
+        <span className="auth-badge">Secure Access</span>
+      </div>
+
       <form className="auth-form" onSubmit={handleSubmit}>
         <AuthInput
           id="login-email"
-          label="Email"
+          label="Email Address"
           type="email"
           placeholder="Enter your email"
         />
@@ -38,15 +43,35 @@ export default function Login() {
           placeholder="Enter your password"
         />
 
-        <div className="auth-options">
+        <div className="auth-options premium-auth-options">
           <label className="remember-me">
             <input type="checkbox" />
-            Remember me
+            Keep me signed in
           </label>
+
+          <button
+            type="button"
+            className="auth-text-button"
+            onClick={() => alert("Password recovery flow can be connected later.")}
+          >
+            Forgot password?
+          </button>
         </div>
 
-        <AuthButton text="Login" />
+        <AuthButton text="Sign In" />
       </form>
+
+      <div className="auth-info-panel">
+        <div className="auth-info-item">
+          <span>Focus</span>
+          <strong>Daily goals and healthy routines</strong>
+        </div>
+
+        <div className="auth-info-item">
+          <span>Access</span>
+          <strong>Login prepared for backend integration</strong>
+        </div>
+      </div>
     </AuthCard>
   );
 }

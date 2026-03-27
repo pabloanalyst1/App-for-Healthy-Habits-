@@ -1,299 +1,314 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 export default function Dashboard() {
-  const habits = [
-    { name: "Drink 2 liters of water", status: "Completed" },
-    { name: "Walk 30 minutes", status: "In Progress" },
-    { name: "Sleep 8 hours", status: "Pending" },
-  ];
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState(null);
+  const [habits, setHabits] = useState([]);
+
+  useEffect(() => {
+    const savedProfile = localStorage.getItem("healthyHabitsProfile");
+    const savedHabits = localStorage.getItem("healthyHabitsList");
+
+    if (savedProfile) {
+      setProfile(JSON.parse(savedProfile));
+    }
+
+    if (savedHabits) {
+      setHabits(JSON.parse(savedHabits));
+    }
+  }, []);
+
+  const fullName =
+    profile?.fullName && profile.fullName.trim() !== ""
+      ? profile.fullName
+      : "User";
+
+  const username =
+    profile?.username && profile.username.trim() !== ""
+      ? `@${profile.username.trim().replace(/^@/, "")}`
+      : profile?.fullName && profile.fullName.trim() !== ""
+      ? `@${profile.fullName.trim().toLowerCase().replace(/\s+/g, ".")}`
+      : "@healthy.user";
+
+  const currentGoal =
+    profile?.goal && profile.goal.trim() !== ""
+      ? profile.goal
+      : "Build stronger daily consistency";
+
+  const totalHabits = habits.length;
+
+  const completedHabits = useMemo(() => {
+    return habits.filter((habit) => habit.progress === "Completed").length;
+  }, [habits]);
+
+  const activeHabits = useMemo(() => {
+    return habits.filter((habit) => habit.progress === "In Progress").length;
+  }, [habits]);
+
+  const pendingHabits = useMemo(() => {
+    return habits.filter((habit) => habit.progress === "Pending").length;
+  }, [habits]);
+
+  const completionRate =
+    totalHabits === 0 ? 0 : Math.round((completedHabits / totalHabits) * 100);
+
+  const estimatedStreak =
+    completedHabits === 0 ? 0 : Math.max(1, Math.min(completedHabits + 1, 7));
 
   const summaryCards = [
-    { title: "Current Streak", value: "4 days" },
-    { title: "Completion Rate", value: "75%" },
-    { title: "Habits Completed", value: "6 / 8" },
+    { title: "Current Streak", value: `${estimatedStreak} days` },
+    { title: "Completion Rate", value: `${completionRate}%` },
+    { title: "Habits Completed", value: `${completedHabits} / ${totalHabits || 0}` },
+    { title: "Active Goals", value: `${activeHabits}` },
   ];
 
+  const handleLogout = () => {
+    navigate("/");
+  };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background:
-          "linear-gradient(135deg, #ecfdf5 0%, #f8fafc 45%, #eef2ff 100%)",
-        fontFamily: "Arial, sans-serif",
-        padding: "28px",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        {/* Top Bar */}
-        <div
-          style={{
-            background: "white",
-            borderRadius: "18px",
-            padding: "18px 24px",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "24px",
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                margin: 0,
-                color: "#15803d",
-                fontSize: "30px",
-              }}
-            >
-              Healthy Habits Dashboard
-            </h1>
-            <p
-              style={{
-                margin: "6px 0 0 0",
-                color: "#64748b",
-                fontSize: "15px",
-              }}
-            >
-              Track your habits, review progress, and stay consistent.
-            </p>
-          </div>
+    <div className="premium-dashboard-page">
+      <div className="premium-dashboard-shell">
+        <aside className="dashboard-sidebar">
+          <div className="sidebar-brand">
+            {profile?.profilePhoto ? (
+              <img
+                src={profile.profilePhoto}
+                alt="User profile"
+                className="sidebar-user-photo"
+              />
+            ) : (
+              <div className="sidebar-logo">
+                {fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
 
-          <button
-            style={{
-              background: "#15803d",
-              color: "white",
-              border: "none",
-              borderRadius: "12px",
-              padding: "12px 18px",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-          >
-            + Add Habit
-          </button>
-        </div>
-
-        {/* Summary cards */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "18px",
-            marginBottom: "24px",
-          }}
-        >
-          {summaryCards.map((card) => (
-            <div
-              key={card.title}
-              style={{
-                background: "white",
-                borderRadius: "18px",
-                padding: "22px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  color: "#64748b",
-                  fontSize: "14px",
-                }}
-              >
-                {card.title}
-              </p>
-              <h2
-                style={{
-                  margin: "10px 0 0 0",
-                  color: "#0f172a",
-                  fontSize: "28px",
-                }}
-              >
-                {card.value}
-              </h2>
-            </div>
-          ))}
-        </div>
-
-        {/* Main content */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "24px",
-          }}
-        >
-          {/* Habits section */}
-          <div
-            style={{
-              background: "white",
-              borderRadius: "20px",
-              padding: "24px",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "18px",
-              }}
-            >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "24px",
-                  color: "#0f172a",
-                }}
-              >
-                Today&apos;s Habits
-              </h3>
-
-              <span
-                style={{
-                  background: "#dcfce7",
-                  color: "#166534",
-                  padding: "8px 12px",
-                  borderRadius: "999px",
-                  fontSize: "13px",
-                  fontWeight: "bold",
-                }}
-              >
-                Daily Focus
-              </span>
-            </div>
-
-            <div style={{ display: "grid", gap: "14px" }}>
-              {habits.map((habit) => (
-                <div
-                  key={habit.name}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "16px",
-                    padding: "16px 18px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    background: "#f8fafc",
-                  }}
-                >
-                  <div>
-                    <h4
-                      style={{
-                        margin: 0,
-                        fontSize: "17px",
-                        color: "#111827",
-                      }}
-                    >
-                      {habit.name}
-                    </h4>
-                    <p
-                      style={{
-                        margin: "6px 0 0 0",
-                        color: "#64748b",
-                        fontSize: "14px",
-                      }}
-                    >
-                      Healthy routine task for today
-                    </p>
-                  </div>
-
-                  <span
-                    style={{
-                      background:
-                        habit.status === "Completed"
-                          ? "#dcfce7"
-                          : habit.status === "In Progress"
-                          ? "#fef3c7"
-                          : "#e5e7eb",
-                      color:
-                        habit.status === "Completed"
-                          ? "#166534"
-                          : habit.status === "In Progress"
-                          ? "#92400e"
-                          : "#374151",
-                      padding: "8px 12px",
-                      borderRadius: "999px",
-                      fontSize: "13px",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {habit.status}
-                  </span>
-                </div>
-              ))}
+            <div>
+              <h2>{fullName}</h2>
+              <p>{username}</p>
             </div>
           </div>
 
-          {/* Right panel */}
-          <div style={{ display: "grid", gap: "24px" }}>
-            <div
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "24px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-              }}
-            >
-              <h3
-                style={{
-                  marginTop: 0,
-                  color: "#0f172a",
-                }}
-              >
-                Quick Summary
-              </h3>
+          <div className="sidebar-section">
+            <span className="sidebar-label">Navigation</span>
 
-              <p style={{ color: "#475569", lineHeight: "1.7" }}>
-                You are making steady progress this week. Keep completing your
-                daily habits to increase your streak and consistency score.
+            <button className="sidebar-link active-link" type="button">
+              Dashboard
+            </button>
+
+            <button
+              className="sidebar-link"
+              type="button"
+              onClick={() => navigate("/profile")}
+            >
+              Profile
+            </button>
+
+            <button
+              className="sidebar-link"
+              type="button"
+              onClick={() => navigate("/habits")}
+            >
+              Habits
+            </button>
+          </div>
+
+          <div className="sidebar-section">
+            <span className="sidebar-label">Current Goal</span>
+            <div className="sidebar-goal-box">
+              <strong>{currentGoal}</strong>
+              <p>Focused progress starts with small daily actions.</p>
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <span className="sidebar-label">Quick Identity</span>
+            <div className="sidebar-goal-box">
+              <strong>{fullName}</strong>
+              <p>{profile?.email || "Add your email in profile settings"}</p>
+            </div>
+          </div>
+
+          <div className="sidebar-footer">
+            <button className="logout-button" type="button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        <main className="dashboard-main">
+          <div className="premium-top-bar">
+            <div>
+              <p className="topbar-kicker">Dashboard Overview</p>
+              <h1>Welcome back, {fullName}</h1>
+              <p className="topbar-description">
+                Review your progress, manage your habits, and maintain consistency
+                with a clearer view of your health goals.
               </p>
             </div>
 
-            <div
-              style={{
-                background: "white",
-                borderRadius: "20px",
-                padding: "24px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-              }}
-            >
-              <h3
-                style={{
-                  marginTop: 0,
-                  color: "#0f172a",
-                }}
+            <div className="top-bar-actions">
+              <button
+                className="secondary-button"
+                onClick={() => navigate("/profile")}
               >
-                Weekly Goal
-              </h3>
+                Edit Profile
+              </button>
 
-              <div
-                style={{
-                  height: "14px",
-                  background: "#e5e7eb",
-                  borderRadius: "999px",
-                  overflow: "hidden",
-                  marginBottom: "12px",
-                }}
+              <button
+                className="primary-button"
+                onClick={() => navigate("/habits")}
               >
-                <div
-                  style={{
-                    width: "75%",
-                    height: "100%",
-                    background: "linear-gradient(90deg, #22c55e, #15803d)",
-                  }}
-                />
+                + Manage Habits
+              </button>
+            </div>
+          </div>
+
+          <div className="summary-grid">
+            {summaryCards.map((card) => (
+              <div key={card.title} className="summary-card premium-card">
+                <p>{card.title}</p>
+                <h2>{card.value}</h2>
+              </div>
+            ))}
+          </div>
+
+          <div className="premium-dashboard-grid">
+            <section className="panel-card premium-card">
+              <div className="panel-header">
+                <h3>Current Habits</h3>
+                <span className="tag">Live Data</span>
               </div>
 
-              <p style={{ margin: 0, color: "#475569" }}>
-                75% of your weekly goal completed.
-              </p>
+              {habits.length === 0 ? (
+                <div className="empty-state">
+                  <h4>No habits added yet</h4>
+                  <p>
+                    Start by creating habits in the objectives section so your
+                    dashboard can display real progress data.
+                  </p>
+                </div>
+              ) : (
+                <div className="habit-list">
+                  {habits.map((habit) => (
+                    <div key={habit.id} className="habit-item premium-habit-item">
+                      <div>
+                        <h4>{habit.title}</h4>
+                        <p>
+                          {habit.type} • {habit.target}
+                        </p>
+                      </div>
+
+                      <span
+                        className={`status-badge ${
+                          habit.progress === "Completed"
+                            ? "completed"
+                            : habit.progress === "In Progress"
+                            ? "progress"
+                            : "pending"
+                        }`}
+                      >
+                        {habit.progress}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <div className="premium-side-column">
+              <section className="panel-card premium-card">
+                <div className="panel-header">
+                  <h3>Profile Snapshot</h3>
+                  <span className="tag">Saved Data</span>
+                </div>
+
+                <div className="dashboard-user-card">
+                  {profile?.profilePhoto ? (
+                    <img
+                      src={profile.profilePhoto}
+                      alt="Profile preview"
+                      className="dashboard-user-photo"
+                    />
+                  ) : (
+                    <div className="dashboard-user-placeholder">
+                      {fullName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div className="dashboard-user-text">
+                    <h4>{fullName}</h4>
+                    <p>{username}</p>
+                  </div>
+                </div>
+
+                <div className="snapshot-list">
+                  <div className="snapshot-item">
+                    <span>Email</span>
+                    <strong>{profile?.email || "Not provided yet"}</strong>
+                  </div>
+
+                  <div className="snapshot-item">
+                    <span>Weight</span>
+                    <strong>
+                      {profile?.weight ? `${profile.weight} kg` : "Not provided yet"}
+                    </strong>
+                  </div>
+
+                  <div className="snapshot-item">
+                    <span>Height</span>
+                    <strong>
+                      {profile?.height ? `${profile.height} cm` : "Not provided yet"}
+                    </strong>
+                  </div>
+                </div>
+              </section>
+
+              <section className="panel-card premium-card">
+                <div className="panel-header">
+                  <h3>Weekly Completion</h3>
+                  <span className="tag">Analytics</span>
+                </div>
+
+                <div className="progress-bar premium-progress">
+                  <div
+                    className="progress-fill"
+                    style={{ width: `${completionRate}%` }}
+                  />
+                </div>
+
+                <p className="panel-text">
+                  {completionRate}% of your current habits are marked as completed.
+                </p>
+              </section>
+
+              <section className="panel-card premium-card">
+                <div className="panel-header">
+                  <h3>Status Breakdown</h3>
+                  <span className="tag">Summary</span>
+                </div>
+
+                <div className="snapshot-list">
+                  <div className="snapshot-item">
+                    <span>Completed</span>
+                    <strong>{completedHabits}</strong>
+                  </div>
+
+                  <div className="snapshot-item">
+                    <span>In Progress</span>
+                    <strong>{activeHabits}</strong>
+                  </div>
+
+                  <div className="snapshot-item">
+                    <span>Pending</span>
+                    <strong>{pendingHabits}</strong>
+                  </div>
+                </div>
+              </section>
             </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

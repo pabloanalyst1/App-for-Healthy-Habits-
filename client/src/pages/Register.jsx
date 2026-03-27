@@ -7,22 +7,27 @@ import "../styles/auth.css";
 export default function Register() {
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
     navigate("/");
   };
 
   return (
     <AuthCard
       title="Create Your Account"
-      subtitle="Start tracking your habits and improving your daily health."
+      subtitle="Set up your profile and begin tracking your health goals, daily habits, and personal progress."
       footer={
         <p>
           Already have an account?{" "}
-          <span onClick={() => navigate("/")}>Login</span>
+          <span onClick={() => navigate("/")}>Go to sign in</span>
         </p>
       }
     >
+      <div className="auth-badge-row">
+        <span className="auth-badge">New Member</span>
+        <span className="auth-badge">Health Profile</span>
+      </div>
+
       <form className="auth-form" onSubmit={handleSubmit}>
         <AuthInput
           id="register-name"
@@ -33,7 +38,7 @@ export default function Register() {
 
         <AuthInput
           id="register-email"
-          label="Email"
+          label="Email Address"
           type="email"
           placeholder="Enter your email"
         />
@@ -45,8 +50,27 @@ export default function Register() {
           placeholder="Create a password"
         />
 
-        <AuthButton text="Register" />
+        <div className="register-note">
+          <p>
+            By creating an account, you will be able to organize your habits,
+            personalize your profile, and manage your weekly goals.
+          </p>
+        </div>
+
+        <AuthButton text="Create Account" />
       </form>
+
+      <div className="auth-info-panel">
+        <div className="auth-info-item">
+          <span>Setup</span>
+          <strong>Personal account and health profile</strong>
+        </div>
+
+        <div className="auth-info-item">
+          <span>Status</span>
+          <strong>Ready for authentication integration</strong>
+        </div>
+      </div>
     </AuthCard>
   );
 }
