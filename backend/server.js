@@ -3,6 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/auth');
+const metricsRoutes = require('./routes/metrics');
+
+// Import models to ensure associations are set up
+require('./models');
 
 const app = express();
 
@@ -36,6 +40,7 @@ sequelize.sync()
 
 // Rutas
 app.use('/api/auth', authRoutes);
+app.use('/api/metrics', metricsRoutes);
 
 // Puerto
 const PORT = process.env.PORT || 5000;

@@ -1,31 +1,29 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-const User = sequelize.define('User', {
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
-  },
-  password: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
+const HabitCategory = sequelize.define('HabitCategory', {
   name: {
     type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.TEXT,
     allowNull: true,
   },
-  preferences: {
-    type: DataTypes.JSON,
+  icon: {
+    type: DataTypes.STRING,
     allowNull: true,
-    defaultValue: {
-      darkMode: false,
-      notifications: true,
-      language: 'en',
-    },
+  },
+  unit: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  defaultTarget: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   },
 }, {
   timestamps: true,
 });
 
-module.exports = User;
+module.exports = HabitCategory;
