@@ -6,11 +6,12 @@ class MetricsService {
   }
 
   getAuthHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.token}`
-    };
-  }
+  const token = localStorage.getItem('token'); // Fetch it live here
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+}
 
   // Get habit categories
   async getCategories() {
