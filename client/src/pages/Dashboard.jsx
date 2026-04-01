@@ -1,23 +1,96 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import metricsService from "../services/metricsService";
+import authService from "../services/authService";
+import MetricsChart from "../components/MetricsChart";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+
   const [profile, setProfile] = useState(null);
-  const [habits, setHabits] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [userHabits, setUserHabits] = useState([]);
+  const [selectedHabit, setSelectedHabit] = useState(null);
+  const [showHabitSelection, setShowHabitSelection] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const habitCategories = [
+    "Daily Water Intake",
+    "Physical Activity",
+    "Sleep Duration & Quality",
+    "Healthy Eating",
+    "Mental Wellness",
+  ];
 
   useEffect(() => {
     const savedProfile = localStorage.getItem("healthyHabitsProfile");
-    const savedHabits = localStorage.getItem("healthyHabitsList");
-
     if (savedProfile) {
       setProfile(JSON.parse(savedProfile));
     }
-
-    if (savedHabits) {
-      setHabits(JSON.parse(savedHabits));
-    }
   }, []);
+
+  useEffect(() => {
+    if (!authService.isAuthenticated()) {
+      navigate("/");
+      return;
+    }
+
+    loadDashboardData();
+  }, [navigate]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [dashboard, habits] = await Promise.all([
+        metricsService.getDashboard(),
+        metricsService.getHabits(),
+      ]);
+
+      setDashboardData(dashboard);
+      setUserHabits(habits);
+    } catch (err) {
+      console.error("Dashboard load error:", err);
+
+      if (err.message?.includes("401") || err.message?.includes("403")) {
+        authService.logout();
+        navigate("/");
+      } else {
+        setError("Failed to load dashboard data. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddHabit = async (categoryName) => {
+    try {
+      const categories = await metricsService.getCategories();
+      const category = categories.find((cat) => cat.name === categoryName);
+
+      if (category) {
+        const defaultTarget = category.defaultTarget || 1;
+        await metricsService.addHabit(category.id, null, defaultTarget);
+        await loadDashboardData();
+      }
+    } catch (err) {
+      console.error("Failed to add habit:", err);
+    }
+
+    setShowHabitSelection(false);
+  };
+
+  const handleHabitToggle = async (habitId, completed) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      await metricsService.logHabit(habitId, today, !completed, null, null);
+      await loadDashboardData();
+    } catch (err) {
+      console.error("Failed to update habit:", err);
+    }
+  };
 
   const fullName =
     profile?.fullName && profile.fullName.trim() !== ""
@@ -36,36 +109,93 @@ export default function Dashboard() {
       ? profile.goal
       : "Build stronger daily consistency";
 
-  const totalHabits = habits.length;
+  const totalHabits = userHabits.length;
 
   const completedHabits = useMemo(() => {
-    return habits.filter((habit) => habit.progress === "Completed").length;
-  }, [habits]);
+    if (!dashboardData?.todayLogs) return 0;
+    return dashboardData.todayLogs.filter((log) => log.completed).length;
+  }, [dashboardData]);
 
   const activeHabits = useMemo(() => {
-    return habits.filter((habit) => habit.progress === "In Progress").length;
-  }, [habits]);
+    return userHabits.filter((habit) => habit.isActive !== false).length;
+  }, [userHabits]);
 
   const pendingHabits = useMemo(() => {
-    return habits.filter((habit) => habit.progress === "Pending").length;
-  }, [habits]);
+    return Math.max(totalHabits - completedHabits, 0);
+  }, [totalHabits, completedHabits]);
 
   const completionRate =
-    totalHabits === 0 ? 0 : Math.round((completedHabits / totalHabits) * 100);
+    dashboardData?.completionRate ??
+    (totalHabits === 0 ? 0 : Math.round((completedHabits / totalHabits) * 100));
 
-  const estimatedStreak =
-    completedHabits === 0 ? 0 : Math.max(1, Math.min(completedHabits + 1, 7));
+  const estimatedStreak = dashboardData?.currentStreak ?? 0;
 
   const summaryCards = [
     { title: "Current Streak", value: `${estimatedStreak} days` },
     { title: "Completion Rate", value: `${completionRate}%` },
-    { title: "Habits Completed", value: `${completedHabits} / ${totalHabits || 0}` },
+    { title: "Habits Completed", value: `${completedHabits} / ${totalHabits}` },
     { title: "Active Goals", value: `${activeHabits}` },
   ];
 
   const handleLogout = () => {
+    authService.logout();
     navigate("/");
   };
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div>Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          flexDirection: "column",
+          gap: "16px",
+          fontFamily: "Arial, sans-serif",
+          padding: "24px",
+          textAlign: "center",
+        }}
+      >
+        <h2 style={{ color: "#dc2626", margin: 0 }}>Unable to Load Dashboard</h2>
+        <p style={{ color: "#64748b", margin: 0 }}>{error}</p>
+
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <button
+            onClick={loadDashboardData}
+            className="primary-button"
+            type="button"
+          >
+            Try Again
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="secondary-button"
+            type="button"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="premium-dashboard-page">
@@ -79,9 +209,7 @@ export default function Dashboard() {
                 className="sidebar-user-photo"
               />
             ) : (
-              <div className="sidebar-logo">
-                {fullName.charAt(0).toUpperCase()}
-              </div>
+              <div className="sidebar-logo">{fullName.charAt(0).toUpperCase()}</div>
             )}
 
             <div>
@@ -111,6 +239,14 @@ export default function Dashboard() {
               onClick={() => navigate("/habits")}
             >
               Habits
+            </button>
+
+            <button
+              className="sidebar-link"
+              type="button"
+              onClick={() => navigate("/settings")}
+            >
+              Settings
             </button>
           </div>
 
@@ -158,12 +294,90 @@ export default function Dashboard() {
 
               <button
                 className="primary-button"
-                onClick={() => navigate("/habits")}
+                onClick={() => setShowHabitSelection(true)}
               >
-                + Manage Habits
+                + Add Habit
               </button>
             </div>
           </div>
+
+          {showHabitSelection && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(15, 23, 42, 0.45)",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                zIndex: 1000,
+                padding: "20px",
+              }}
+              onClick={() => setShowHabitSelection(false)}
+            >
+              <div
+                className="premium-card"
+                style={{
+                  borderRadius: "24px",
+                  padding: "24px",
+                  maxWidth: "560px",
+                  width: "100%",
+                }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "18px",
+                    gap: "12px",
+                  }}
+                >
+                  <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>
+                    Choose a Habit Category
+                  </h2>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowHabitSelection(false)}
+                    style={{
+                      border: "none",
+                      background: "transparent",
+                      fontSize: "24px",
+                      cursor: "pointer",
+                      color: "#64748b",
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {habitCategories.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => handleAddHabit(category)}
+                      style={{
+                        background: "#f8fafc",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "14px",
+                        padding: "16px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        color: "#374151",
+                      }}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="summary-grid">
             {summaryCards.map((card) => (
@@ -181,88 +395,131 @@ export default function Dashboard() {
                 <span className="tag">Live Data</span>
               </div>
 
-              {habits.length === 0 ? (
+              {userHabits.length === 0 ? (
                 <div className="empty-state">
                   <h4>No habits added yet</h4>
                   <p>
-                    Start by creating habits in the objectives section so your
-                    dashboard can display real progress data.
+                    Start by creating habits so your dashboard can display real
+                    progress data.
                   </p>
                 </div>
               ) : (
                 <div className="habit-list">
-                  {habits.map((habit) => (
-                    <div key={habit.id} className="habit-item premium-habit-item">
-                      <div>
-                        <h4>{habit.title}</h4>
-                        <p>
-                          {habit.type} • {habit.target}
-                        </p>
-                      </div>
+                  {userHabits.map((habit) => {
+                    const todayLog = dashboardData?.todayLogs?.find(
+                      (log) => log.habitId === habit.id
+                    );
+                    const isCompleted = todayLog?.completed || false;
+                    const isSelected = selectedHabit?.id === habit.id;
 
-                      <span
-                        className={`status-badge ${
-                          habit.progress === "Completed"
-                            ? "completed"
-                            : habit.progress === "In Progress"
-                            ? "progress"
-                            : "pending"
-                        }`}
+                    return (
+                      <div
+                        key={habit.id}
+                        className="habit-item premium-habit-item"
+                        style={{
+                          borderColor: isSelected ? "#22c55e" : undefined,
+                          background: isSelected ? "#ecfdf5" : undefined,
+                          cursor: "pointer",
+                        }}
+                        onClick={() => setSelectedHabit(habit)}
                       >
-                        {habit.progress}
-                      </span>
-                    </div>
-                  ))}
+                        <div>
+                          <h4>{habit.customName || habit.category?.name}</h4>
+                          <p>
+                            Target: {habit.targetValue} {habit.category?.unit}
+                            {todayLog?.actualValue
+                              ? ` • Today: ${todayLog.actualValue}`
+                              : ""}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleHabitToggle(habit.id, isCompleted);
+                          }}
+                          className={
+                            isCompleted ? "secondary-button small-button" : "primary-button small-button"
+                          }
+                        >
+                          {isCompleted ? "Completed" : "Mark Complete"}
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </section>
 
             <div className="premium-side-column">
+              {selectedHabit && (
+                <section className="panel-card premium-card">
+                  <div className="panel-header">
+                    <h3>Habit Preview</h3>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedHabit(null)}
+                      style={{
+                        border: "none",
+                        background: "transparent",
+                        fontSize: "20px",
+                        cursor: "pointer",
+                        color: "#64748b",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="snapshot-list">
+                    <div className="snapshot-item">
+                      <span>Habit</span>
+                      <strong>{selectedHabit.customName || selectedHabit.category?.name}</strong>
+                    </div>
+
+                    <div className="snapshot-item">
+                      <span>Category</span>
+                      <strong>{selectedHabit.category?.name || "Not available"}</strong>
+                    </div>
+
+                    <div className="snapshot-item">
+                      <span>Target</span>
+                      <strong>
+                        {selectedHabit.targetValue} {selectedHabit.category?.unit}
+                      </strong>
+                    </div>
+
+                    <div className="snapshot-item">
+                      <span>Status</span>
+                      <strong>{selectedHabit.isActive ? "Active" : "Inactive"}</strong>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               <section className="panel-card premium-card">
                 <div className="panel-header">
-                  <h3>Profile Snapshot</h3>
-                  <span className="tag">Saved Data</span>
+                  <h3>Progress Overview</h3>
+                  <span className="tag">Chart</span>
                 </div>
 
-                <div className="dashboard-user-card">
-                  {profile?.profilePhoto ? (
-                    <img
-                      src={profile.profilePhoto}
-                      alt="Profile preview"
-                      className="dashboard-user-photo"
-                    />
-                  ) : (
-                    <div className="dashboard-user-placeholder">
-                      {fullName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+                <MetricsChart title="Daily Completions" />
+              </section>
 
-                  <div className="dashboard-user-text">
-                    <h4>{fullName}</h4>
-                    <p>{username}</p>
-                  </div>
+              <section className="panel-card premium-card">
+                <div className="panel-header">
+                  <h3>Quick Summary</h3>
+                  <span className="tag">Insights</span>
                 </div>
 
-                <div className="snapshot-list">
-                  <div className="snapshot-item">
-                    <span>Email</span>
-                    <strong>{profile?.email || "Not provided yet"}</strong>
-                  </div>
-
-                  <div className="snapshot-item">
-                    <span>Weight</span>
-                    <strong>
-                      {profile?.weight ? `${profile.weight} kg` : "Not provided yet"}
-                    </strong>
-                  </div>
-
-                  <div className="snapshot-item">
-                    <span>Height</span>
-                    <strong>
-                      {profile?.height ? `${profile.height} cm` : "Not provided yet"}
-                    </strong>
-                  </div>
-                </div>
+                <p className="panel-text">
+                  {dashboardData?.completedToday > 0
+                    ? `Great job! You've completed ${dashboardData.completedToday} habit${
+                        dashboardData.completedToday > 1 ? "s" : ""
+                      } today. Keep the momentum going.`
+                    : "No habits completed today yet. Start building your streak by completing your first habit."}
+                </p>
               </section>
 
               <section className="panel-card premium-card">
@@ -279,7 +536,7 @@ export default function Dashboard() {
                 </div>
 
                 <p className="panel-text">
-                  {completionRate}% of your current habits are marked as completed.
+                  {completionRate}% of your weekly goal completed.
                 </p>
               </section>
 

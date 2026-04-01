@@ -1,15 +1,34 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthCard from "../components/AuthCard";
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
+import authService from "../services/authService";
 import "../styles/auth.css";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate("/dashboard");
+    setError("");
+    setLoading(true);
+
+    try {
+      await authService.login(formData.email, formData.password);
+      navigate("/dashboard");
+    } catch (loginError) {
+      setError(loginError.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,11 +48,21 @@ export default function Login() {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="error-message" style={{ color: "red", marginBottom: "10px" }}>
+            {error}
+          </div>
+        )}
+
         <AuthInput
           id="login-email"
           label="Email Address"
           type="email"
           placeholder="Enter your email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
         />
 
         <AuthInput
@@ -41,6 +70,10 @@ export default function Login() {
           label="Password"
           type="password"
           placeholder="Enter your password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
         />
 
         <div className="auth-options premium-auth-options">
@@ -58,7 +91,7 @@ export default function Login() {
           </button>
         </div>
 
-        <AuthButton text="Sign In" />
+        <AuthButton text={loading ? "Logging in..." : "Sign In"} disabled={loading} />
       </form>
 
       <div className="auth-info-panel">

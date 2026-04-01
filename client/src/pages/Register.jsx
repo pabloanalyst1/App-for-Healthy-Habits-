@@ -1,15 +1,42 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthCard from "../components/AuthCard";
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
+import authService from "../services/authService";
 import "../styles/auth.css";
 
 export default function Register() {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleChange = (event) => {
+    setFormData({ ...formData, [event.target.name]: event.target.value });
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate("/");
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      await authService.register(formData.email, formData.password);
+      setSuccess("Account created successfully! Redirecting to login...");
+      setTimeout(() => navigate("/"), 2000);
+    } catch (registerError) {
+      console.log("Registration error:", registerError);
+      setError(registerError.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,11 +56,30 @@ export default function Register() {
       </div>
 
       <form className="auth-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="error-message" style={{ color: "red", marginBottom: "10px" }}>
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div
+            className="success-message"
+            style={{ color: "green", marginBottom: "10px" }}
+          >
+            {success}
+          </div>
+        )}
+
         <AuthInput
           id="register-name"
           label="Full Name"
           type="text"
           placeholder="Enter your full name"
+          name="fullName"
+          value={formData.fullName}
+          onChange={handleChange}
+          required
         />
 
         <AuthInput
@@ -41,6 +87,10 @@ export default function Register() {
           label="Email Address"
           type="email"
           placeholder="Enter your email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
         />
 
         <AuthInput
@@ -48,6 +98,10 @@ export default function Register() {
           label="Password"
           type="password"
           placeholder="Create a password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          required
         />
 
         <div className="register-note">
@@ -57,7 +111,10 @@ export default function Register() {
           </p>
         </div>
 
-        <AuthButton text="Create Account" />
+        <AuthButton
+          text={loading ? "Creating account..." : "Create Account"}
+          disabled={loading}
+        />
       </form>
 
       <div className="auth-info-panel">
