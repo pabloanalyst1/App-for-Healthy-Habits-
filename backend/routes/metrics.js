@@ -271,7 +271,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     let completionRate = 0;
     try {
       const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
+      weekAgo.setDate(weekAgo.getDate() - 6);
       const weekStart = weekAgo.toISOString().split('T')[0];
 
       const weekLogs = await HabitLog.findAll({
@@ -289,7 +289,13 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
       });
 
       const totalPossible = activeHabits * 7;
-      const totalCompleted = weekLogs.filter(log => log.completed).length;
+      const uniqueCompletedKeys = new Set();
+      weekLogs.forEach((log) => {
+        if (log.completed) {
+          uniqueCompletedKeys.add(`${log.userHabitId}:${log.date}`);
+        }
+      });
+      const totalCompleted = uniqueCompletedKeys.size;
       completionRate = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
     } catch (rateError) {
       console.error('Completion rate calculation error:', rateError);
