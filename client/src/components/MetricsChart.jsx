@@ -1,97 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import metricsService from '../services/metricsService';
 
 export default function MetricsChart({ habitId, categoryId, title }) {
-  const [metrics, setMetrics] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadMetrics();
+    loadChartData();
   }, [habitId, categoryId]);
 
-  const loadMetrics = async () => {
+  const loadChartData = async () => {
     try {
       setLoading(true);
       const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      let data;
+      let rawData = [];
       if (habitId) {
-        data = await metricsService.getHabitLogs(habitId, startDate, endDate);
-      } else if (categoryId) {
-        data = await metricsService.getMetrics(categoryId, startDate, endDate);
+        rawData = await metricsService.getHabitLogs(habitId, startDate, endDate);
+      } else {
+        const dashboard = await metricsService.getDashboard();
+        rawData = dashboard.weeklyStats || [];
       }
 
-      setMetrics(data || []);
+      const formatted = rawData.map(item => ({
+        name: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        completed: item.completed ? 1 : 0,
+        value: parseFloat(item.value || 0)
+      }));
+
+      setChartData(formatted);
     } catch (err) {
-      console.error('Failed to load metrics:', err);
+      console.error('Chart load error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div style={{ textAlign: 'center', padding: '20px' }}>Loading metrics...</div>;
-  }
+  if (loading) return <div style={{ padding: '20px', textAlign: 'center' }}>Loading Chart...</div>;
 
-  if (metrics.length === 0) {
-    return <div style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No data available</div>;
+  // If no data, show a simple message so Recharts doesn't crash trying to calculate width
+  if (chartData.length === 0) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>
+        <h4 style={{ color: '#0f172a', marginBottom: '15px' }}>{title}</h4>
+        <p>No activity logged this week yet.</p>
+      </div>
+    );
   }
-
-  // Simple bar chart visualization
-  const maxValue = Math.max(...metrics.map(m => habitId ? (m.completed ? 1 : 0) : parseFloat(m.value)));
-  const chartHeight = 200;
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h3 style={{ marginTop: 0, marginBottom: '20px', color: '#0f172a' }}>{title}</h3>
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'end',
-        height: `${chartHeight}px`,
-        gap: '4px',
-        padding: '20px 0',
-        borderBottom: '1px solid #e5e7eb',
-        borderLeft: '1px solid #e5e7eb'
-      }}>
-        {metrics.slice(-14).map((metric, index) => {
-          const value = habitId ? (metric.completed ? 1 : 0) : parseFloat(metric.value);
-          const height = maxValue > 0 ? (value / maxValue) * chartHeight : 0;
-          const date = new Date(metric.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-          return (
-            <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: '30px',
-                  height: `${height}px`,
-                  background: value > 0 ? '#22c55e' : '#e5e7eb',
-                  borderRadius: '4px 4px 0 0',
-                  transition: 'all 0.3s',
-                  cursor: 'pointer'
-                }}
-                title={`${date}: ${value}`}
-              />
-              <span style={{
-                fontSize: '10px',
-                color: '#64748b',
-                marginTop: '8px',
-                transform: 'rotate(-45deg)',
-                transformOrigin: 'center',
-                whiteSpace: 'nowrap'
-              }}>
-                {date}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop: '20px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
-        Last 14 days • Max: {maxValue}
-      </div>
+    <div style={{ width: '100%', minHeight: '250px' }}>
+      <h4 style={{ color: '#0f172a', marginBottom: '15px' }}>{title}</h4>
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis
+            dataKey="name"
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: '#64748b', fontSize: 12 }}
+          />
+          <YAxis hide domain={[0, 'auto']} />
+          <Tooltip
+            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+          />
+          <Area
+            type="monotone"
+            dataKey="completed"
+            stroke="#22c55e"
+            strokeWidth={3}
+            fillOpacity={1}
+            fill="url(#colorValue)"
+            animationDuration={1000}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
