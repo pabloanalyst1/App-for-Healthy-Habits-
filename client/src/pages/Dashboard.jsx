@@ -4,24 +4,43 @@ import metricsService from "../services/metricsService";
 import authService from "../services/authService";
 import MetricsChart from "../components/MetricsChart";
 
+const buildCreateHabitForm = (categories) => {
+  const firstCategory = categories[0];
+
+  return {
+    categoryId: firstCategory ? String(firstCategory.id) : "",
+    customName: "",
+    targetValue:
+      firstCategory?.defaultTarget != null ? String(firstCategory.defaultTarget) : "",
+    isActive: true,
+  };
+};
+
+const buildEditHabitForm = (habit) => ({
+  categoryId: String(habit.categoryId ?? habit.category?.id ?? ""),
+  customName: habit.customName || "",
+  targetValue:
+    habit.targetValue != null ? String(habit.targetValue) : "",
+  isActive: habit.isActive !== false,
+});
+
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [userHabits, setUserHabits] = useState([]);
+  const [habitCategories, setHabitCategories] = useState([]);
   const [selectedHabit, setSelectedHabit] = useState(null);
-  const [showHabitSelection, setShowHabitSelection] = useState(false);
+  const [showHabitModal, setShowHabitModal] = useState(false);
+  const [habitModalMode, setHabitModalMode] = useState("create");
+  const [editingHabitId, setEditingHabitId] = useState(null);
+  const [habitForm, setHabitForm] = useState(buildCreateHabitForm([]));
+  const [habitFormError, setHabitFormError] = useState(null);
+  const [habitFeedback, setHabitFeedback] = useState(null);
+  const [isSavingHabit, setIsSavingHabit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const habitCategories = [
-    "Daily Water Intake",
-    "Physical Activity",
-    "Sleep Duration & Quality",
-    "Healthy Eating",
-    "Mental Wellness",
-  ];
 
   useEffect(() => {
     const savedProfile = localStorage.getItem("healthyHabitsProfile");
@@ -39,56 +58,253 @@ export default function Dashboard() {
     loadDashboardData();
   }, [navigate]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (preferredHabitId) => {
     try {
       setLoading(true);
       setError(null);
 
-      const [dashboard, habits] = await Promise.all([
+      const [dashboard, habits, categories] = await Promise.all([
         metricsService.getDashboard(),
         metricsService.getHabits(),
+        metricsService.getCategories(),
       ]);
 
       setDashboardData(dashboard);
       setUserHabits(habits);
+      setHabitCategories(categories);
+
+      const nextSelectedHabitId =
+        preferredHabitId === undefined ? selectedHabit?.id : preferredHabitId;
+
+      setSelectedHabit(
+        nextSelectedHabitId
+          ? habits.find((habit) => habit.id === nextSelectedHabitId) || null
+          : null
+      );
     } catch (err) {
       console.error("Dashboard load error:", err);
 
-      if (err.message?.includes("401") || err.message?.includes("403")) {
+      if (
+        err.status === 401 ||
+        err.status === 403 ||
+        err.message?.includes("401") ||
+        err.message?.includes("403")
+      ) {
         authService.logout();
         navigate("/");
       } else {
-        setError("Failed to load dashboard data. Please try again.");
+        setError(err.message || "Failed to load dashboard data. Please try again.");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddHabit = async (categoryName) => {
-    try {
-      const categories = await metricsService.getCategories();
-      const category = categories.find((cat) => cat.name === categoryName);
+  const availableCreateCategories = useMemo(() => {
+    return habitCategories.filter(
+      (category) =>
+        !userHabits.some((habit) => Number(habit.categoryId) === Number(category.id))
+    );
+  }, [habitCategories, userHabits]);
 
-      if (category) {
-        const defaultTarget = category.defaultTarget || 1;
-        await metricsService.addHabit(category.id, null, defaultTarget);
-        await loadDashboardData();
-      }
-    } catch (err) {
-      console.error("Failed to add habit:", err);
+  const modalCategoryOptions = useMemo(() => {
+    if (habitModalMode === "edit") {
+      return habitCategories.filter(
+        (category) =>
+          !userHabits.some(
+            (habit) =>
+              habit.id !== editingHabitId &&
+              Number(habit.categoryId) === Number(category.id)
+          )
+      );
     }
 
-    setShowHabitSelection(false);
+    return availableCreateCategories;
+  }, [availableCreateCategories, editingHabitId, habitCategories, habitModalMode, userHabits]);
+
+  const selectedCategory = useMemo(() => {
+    return (
+      habitCategories.find(
+        (category) => String(category.id) === String(habitForm.categoryId)
+      ) || null
+    );
+  }, [habitCategories, habitForm.categoryId]);
+
+  const selectedHabitTodayLog = useMemo(() => {
+    if (!selectedHabit || !dashboardData?.todayLogs) {
+      return null;
+    }
+
+    return (
+      dashboardData.todayLogs.find((log) => log.habitId === selectedHabit.id) || null
+    );
+  }, [dashboardData, selectedHabit]);
+
+  const openCreateHabitModal = () => {
+    if (availableCreateCategories.length === 0) {
+      setHabitFeedback({
+        type: "error",
+        message: "You already added every available habit category.",
+      });
+      return;
+    }
+
+    setHabitFeedback(null);
+    setHabitFormError(null);
+    setHabitModalMode("create");
+    setEditingHabitId(null);
+    setHabitForm(buildCreateHabitForm(availableCreateCategories));
+    setShowHabitModal(true);
+  };
+
+  const openEditHabitModal = (habit) => {
+    setHabitFeedback(null);
+    setHabitFormError(null);
+    setHabitModalMode("edit");
+    setEditingHabitId(habit.id);
+    setHabitForm(buildEditHabitForm(habit));
+    setShowHabitModal(true);
+  };
+
+  const closeHabitModal = () => {
+    setShowHabitModal(false);
+    setEditingHabitId(null);
+    setHabitFormError(null);
+  };
+
+  const handleHabitFormChange = (field, value) => {
+    setHabitFormError(null);
+
+    if (field === "categoryId") {
+      const nextCategory = habitCategories.find(
+        (category) => String(category.id) === String(value)
+      );
+
+      setHabitForm((prev) => ({
+        ...prev,
+        categoryId: value,
+        targetValue:
+          habitModalMode === "create"
+            ? String(nextCategory?.defaultTarget ?? prev.targetValue)
+            : prev.targetValue,
+      }));
+      return;
+    }
+
+    if (field === "isActive") {
+      setHabitForm((prev) => ({
+        ...prev,
+        isActive: value === "active",
+      }));
+      return;
+    }
+
+    setHabitForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleHabitSubmit = async (event) => {
+    event.preventDefault();
+    setHabitFormError(null);
+
+    const parsedCategoryId = Number.parseInt(habitForm.categoryId, 10);
+    const parsedTargetValue = Number.parseInt(habitForm.targetValue, 10);
+
+    if (!Number.isInteger(parsedCategoryId)) {
+      setHabitFormError("Please choose a habit category.");
+      return;
+    }
+
+    if (!Number.isInteger(parsedTargetValue) || parsedTargetValue <= 0) {
+      setHabitFormError("Target value must be a number greater than 0.");
+      return;
+    }
+
+    try {
+      setIsSavingHabit(true);
+
+      const payload = {
+        categoryId: parsedCategoryId,
+        customName: habitForm.customName.trim() || null,
+        targetValue: parsedTargetValue,
+        isActive: habitForm.isActive,
+      };
+
+      const savedHabit =
+        habitModalMode === "edit" && editingHabitId
+          ? await metricsService.updateHabit(editingHabitId, payload)
+          : await metricsService.addHabit(
+              payload.categoryId,
+              payload.customName,
+              payload.targetValue,
+              payload.isActive
+            );
+
+      closeHabitModal();
+      setHabitFeedback({
+        type: "success",
+        message:
+          habitModalMode === "edit"
+            ? "Habit updated successfully."
+            : "Habit created successfully.",
+      });
+      await loadDashboardData(savedHabit?.id);
+    } catch (err) {
+      console.error("Failed to save habit:", err);
+      setHabitFormError(err.message || "Failed to save habit.");
+    } finally {
+      setIsSavingHabit(false);
+    }
+  };
+
+  const handleDeleteHabit = async (habitId) => {
+    const habitToDelete = userHabits.find((habit) => habit.id === habitId);
+    const habitLabel = habitToDelete?.customName || habitToDelete?.category?.name || "this habit";
+
+    const confirmed = window.confirm(
+      `Delete "${habitLabel}"? This will also remove its progress logs.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await metricsService.deleteHabit(habitId);
+      setHabitFeedback({
+        type: "success",
+        message: "Habit deleted successfully.",
+      });
+      await loadDashboardData(selectedHabit?.id === habitId ? null : selectedHabit?.id);
+    } catch (err) {
+      console.error("Failed to delete habit:", err);
+      setHabitFeedback({
+        type: "error",
+        message: err.message || "Failed to delete habit.",
+      });
+    }
   };
 
   const handleHabitToggle = async (habitId, completed) => {
+    const targetHabit = userHabits.find((habit) => habit.id === habitId);
+
+    if (targetHabit?.isActive === false) {
+      return;
+    }
+
     try {
       const today = new Date().toISOString().split("T")[0];
       await metricsService.logHabit(habitId, today, !completed, null, null);
-      await loadDashboardData();
+      setHabitFeedback(null);
+      await loadDashboardData(selectedHabit?.id);
     } catch (err) {
       console.error("Failed to update habit:", err);
+      setHabitFeedback({
+        type: "error",
+        message: err.message || "Failed to update habit progress.",
+      });
     }
   };
 
@@ -101,8 +317,8 @@ export default function Dashboard() {
     profile?.username && profile.username.trim() !== ""
       ? `@${profile.username.trim().replace(/^@/, "")}`
       : profile?.fullName && profile.fullName.trim() !== ""
-      ? `@${profile.fullName.trim().toLowerCase().replace(/\s+/g, ".")}`
-      : "@healthy.user";
+        ? `@${profile.fullName.trim().toLowerCase().replace(/\s+/g, ".")}`
+        : "@healthy.user";
 
   const currentGoal =
     profile?.goal && profile.goal.trim() !== ""
@@ -178,7 +394,7 @@ export default function Dashboard() {
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
           <button
-            onClick={loadDashboardData}
+            onClick={() => loadDashboardData()}
             className="primary-button"
             type="button"
           >
@@ -292,16 +508,23 @@ export default function Dashboard() {
                 Edit Profile
               </button>
 
-              <button
-                className="primary-button"
-                onClick={() => setShowHabitSelection(true)}
-              >
+              <button className="primary-button" onClick={openCreateHabitModal}>
                 + Add Habit
               </button>
             </div>
           </div>
 
-          {showHabitSelection && (
+          {habitFeedback && (
+            <div
+              className={`feedback-banner ${
+                habitFeedback.type === "error" ? "feedback-error" : "feedback-success"
+              }`}
+            >
+              {habitFeedback.message}
+            </div>
+          )}
+
+          {showHabitModal && (
             <div
               style={{
                 position: "fixed",
@@ -313,14 +536,14 @@ export default function Dashboard() {
                 zIndex: 1000,
                 padding: "20px",
               }}
-              onClick={() => setShowHabitSelection(false)}
+              onClick={closeHabitModal}
             >
               <div
                 className="premium-card"
                 style={{
                   borderRadius: "24px",
                   padding: "24px",
-                  maxWidth: "560px",
+                  maxWidth: "640px",
                   width: "100%",
                 }}
                 onClick={(event) => event.stopPropagation()}
@@ -334,13 +557,19 @@ export default function Dashboard() {
                     gap: "12px",
                   }}
                 >
-                  <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>
-                    Choose a Habit Category
-                  </h2>
+                  <div>
+                    <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>
+                      {habitModalMode === "edit" ? "Edit Habit" : "Create Habit"}
+                    </h2>
+                    <p className="modal-subtitle">
+                      Choose a category, customize the name, and set a target that
+                      fits the user&apos;s goal.
+                    </p>
+                  </div>
 
                   <button
                     type="button"
-                    onClick={() => setShowHabitSelection(false)}
+                    onClick={closeHabitModal}
                     style={{
                       border: "none",
                       background: "transparent",
@@ -353,28 +582,117 @@ export default function Dashboard() {
                   </button>
                 </div>
 
-                <div style={{ display: "grid", gap: "12px" }}>
-                  {habitCategories.map((category) => (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => handleAddHabit(category)}
-                      style={{
-                        background: "#f8fafc",
-                        border: "1px solid #e5e7eb",
-                        borderRadius: "14px",
-                        padding: "16px",
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontSize: "15px",
-                        fontWeight: 600,
-                        color: "#374151",
-                      }}
+                <form className="section-form" onSubmit={handleHabitSubmit}>
+                  <div className="form-row">
+                    <div className="section-field">
+                      <label htmlFor="habit-category">Category</label>
+                      <select
+                        id="habit-category"
+                        value={habitForm.categoryId}
+                        onChange={(event) =>
+                          handleHabitFormChange("categoryId", event.target.value)
+                        }
+                        className="dashboard-form-control"
+                      >
+                        <option value="">Select a category</option>
+                        {modalCategoryOptions.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="section-field">
+                      <label htmlFor="habit-target">
+                        Target {selectedCategory?.unit ? `(${selectedCategory.unit})` : ""}
+                      </label>
+                      <input
+                        id="habit-target"
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={habitForm.targetValue}
+                        onChange={(event) =>
+                          handleHabitFormChange("targetValue", event.target.value)
+                        }
+                        placeholder="Enter target"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="section-field">
+                    <label htmlFor="habit-name">Habit Name</label>
+                    <input
+                      id="habit-name"
+                      type="text"
+                      value={habitForm.customName}
+                      onChange={(event) =>
+                        handleHabitFormChange("customName", event.target.value)
+                      }
+                      placeholder={
+                        selectedCategory?.name || "Leave blank to use the category name"
+                      }
+                    />
+                    <span className="field-hint">
+                      Leave this blank if you want to keep the category name as the
+                      visible habit title.
+                    </span>
+                  </div>
+
+                  <div className="section-field">
+                    <label htmlFor="habit-status">Status</label>
+                    <select
+                      id="habit-status"
+                      value={habitForm.isActive ? "active" : "inactive"}
+                      onChange={(event) =>
+                        handleHabitFormChange("isActive", event.target.value)
+                      }
+                      className="dashboard-form-control"
                     >
-                      {category}
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+
+                  {selectedCategory && (
+                    <div className="habit-category-hint">
+                      <strong>{selectedCategory.name}</strong>
+                      <p>
+                        Default target: {selectedCategory.defaultTarget || 1}{" "}
+                        {selectedCategory.unit || "units"}.
+                        {selectedCategory.description
+                          ? ` ${selectedCategory.description}`
+                          : ""}
+                      </p>
+                    </div>
+                  )}
+
+                  {habitFormError && (
+                    <div className="feedback-banner feedback-error">{habitFormError}</div>
+                  )}
+
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={closeHabitModal}
+                    >
+                      Cancel
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="submit"
+                      className="primary-button"
+                      disabled={isSavingHabit}
+                    >
+                      {isSavingHabit
+                        ? "Saving..."
+                        : habitModalMode === "edit"
+                          ? "Save Changes"
+                          : "Create Habit"}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}
@@ -415,7 +733,9 @@ export default function Dashboard() {
                     return (
                       <div
                         key={habit.id}
-                        className="habit-item premium-habit-item"
+                        className={`habit-item premium-habit-item ${
+                          habit.isActive === false ? "inactive-habit" : ""
+                        }`}
                         style={{
                           borderColor: isSelected ? "#22c55e" : undefined,
                           background: isSelected ? "#ecfdf5" : undefined,
@@ -423,28 +743,78 @@ export default function Dashboard() {
                         }}
                         onClick={() => setSelectedHabit(habit)}
                       >
-                        <div>
-                          <h4>{habit.customName || habit.category?.name}</h4>
+                        <div className="habit-item-content">
+                          <div className="habit-title-row">
+                            <h4>{habit.customName || habit.category?.name}</h4>
+                            <span
+                              className={`status-badge ${
+                                habit.isActive === false
+                                  ? "pending"
+                                  : isCompleted
+                                    ? "completed"
+                                    : "progress"
+                              }`}
+                            >
+                              {habit.isActive === false
+                                ? "Inactive"
+                                : isCompleted
+                                  ? "Completed today"
+                                  : "Active"}
+                            </span>
+                          </div>
+
                           <p>
-                            Target: {habit.targetValue} {habit.category?.unit}
+                            {habit.category?.name || "Custom habit"} • Target:{" "}
+                            {habit.targetValue} {habit.category?.unit}
                             {todayLog?.actualValue
                               ? ` • Today: ${todayLog.actualValue}`
                               : ""}
                           </p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleHabitToggle(habit.id, isCompleted);
-                          }}
-                          className={
-                            isCompleted ? "secondary-button small-button" : "primary-button small-button"
-                          }
-                        >
-                          {isCompleted ? "Completed" : "Mark Complete"}
-                        </button>
+                        <div className="habit-item-actions">
+                          <button
+                            type="button"
+                            className="secondary-button small-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openEditHabitModal(habit);
+                            }}
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="danger-button small-button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteHabit(habit.id);
+                            }}
+                          >
+                            Delete
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={habit.isActive === false}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleHabitToggle(habit.id, isCompleted);
+                            }}
+                            className={
+                              isCompleted || habit.isActive === false
+                                ? "secondary-button small-button"
+                                : "primary-button small-button"
+                            }
+                          >
+                            {habit.isActive === false
+                              ? "Inactive"
+                              : isCompleted
+                                ? "Completed"
+                                : "Mark Complete"}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -475,7 +845,9 @@ export default function Dashboard() {
                   <div className="snapshot-list">
                     <div className="snapshot-item">
                       <span>Habit</span>
-                      <strong>{selectedHabit.customName || selectedHabit.category?.name}</strong>
+                      <strong>
+                        {selectedHabit.customName || selectedHabit.category?.name}
+                      </strong>
                     </div>
 
                     <div className="snapshot-item">
@@ -494,6 +866,34 @@ export default function Dashboard() {
                       <span>Status</span>
                       <strong>{selectedHabit.isActive ? "Active" : "Inactive"}</strong>
                     </div>
+
+                    <div className="snapshot-item">
+                      <span>Today</span>
+                      <strong>
+                        {selectedHabit.isActive
+                          ? selectedHabitTodayLog?.completed
+                            ? "Completed"
+                            : "Pending"
+                          : "Not tracking"}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => openEditHabitModal(selectedHabit)}
+                    >
+                      Edit Habit
+                    </button>
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleDeleteHabit(selectedHabit.id)}
+                    >
+                      Delete Habit
+                    </button>
                   </div>
                 </section>
               )}

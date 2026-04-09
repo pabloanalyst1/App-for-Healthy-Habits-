@@ -72,6 +72,13 @@
   color: white;
 }
 
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -171,6 +178,32 @@
   gap: 12px;
 }
 
+.habit-item-content {
+  display: grid;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.habit-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.habit-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.inactive-habit {
+  opacity: 0.82;
+}
+
 .habit-item h4 {
   margin: 0;
   font-size: 17px;
@@ -261,9 +294,26 @@
   outline: none;
 }
 
-.section-field input:focus {
+.section-field select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  outline: none;
+  background: white;
+}
+
+.section-field input:focus,
+.section-field select:focus {
   border-color: #22c55e;
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.field-hint {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
 }
 
 .button-row {
@@ -287,6 +337,50 @@
   font-size: 13px;
 }
 
+.feedback-banner {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.feedback-success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.feedback-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.modal-subtitle {
+  margin: 8px 0 0 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.habit-category-hint {
+  border: 1px solid #dcfce7;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f0fdf4, #f8fafc);
+  padding: 16px;
+}
+
+.habit-category-hint strong {
+  color: #0f172a;
+}
+
+.habit-category-hint p {
+  margin: 8px 0 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
 .success-message {
   margin: 4px 0 0 0;
   color: #15803d;
@@ -304,6 +398,15 @@
   .top-bar,
   .section-top-bar {
     align-items: flex-start;
+  }
+
+  .habit-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .habit-item-actions {
+    justify-content: flex-start;
   }
 }
 .profile-layout {

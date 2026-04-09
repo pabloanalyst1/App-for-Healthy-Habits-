@@ -1,101 +1,99 @@
 const API_BASE_URL = '/api';
 
 class MetricsService {
-  constructor() {
-    this.token = localStorage.getItem('token');
+  getAuthHeaders() {
+    const token = localStorage.getItem('token');
+
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    };
   }
 
-  getAuthHeaders() {
-  const token = localStorage.getItem('token'); // Fetch it live here
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
-}
-
-  // Get habit categories
-  async getCategories() {
-    const response = await fetch(`${API_BASE_URL}/metrics/categories`, {
-      headers: this.getAuthHeaders()
+  async request(path, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...this.getAuthHeaders(),
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch categories');
+      let errorMessage = 'Request failed';
+
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } catch {
+        errorMessage = `Request failed with status ${response.status}`;
+      }
+
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      throw error;
+    }
+
+    if (response.status === 204) {
+      return null;
     }
 
     return response.json();
+  }
+
+  // Get habit categories
+  async getCategories() {
+    return this.request('/metrics/categories');
   }
 
   // Get user's habits
   async getHabits() {
-    const response = await fetch(`${API_BASE_URL}/metrics/habits`, {
-      headers: this.getAuthHeaders()
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch habits');
-    }
-
-    return response.json();
+    return this.request('/metrics/habits');
   }
 
   // Add a habit
-  async addHabit(categoryId, customName, targetValue) {
-    const response = await fetch(`${API_BASE_URL}/metrics/habits`, {
+  async addHabit(categoryId, customName, targetValue, isActive = true) {
+    return this.request('/metrics/habits', {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ categoryId, customName, targetValue })
+      body: JSON.stringify({ categoryId, customName, targetValue, isActive }),
     });
+  }
 
-    if (!response.ok) {
-      throw new Error('Failed to add habit');
-    }
+  // Update a habit
+  async updateHabit(habitId, updates) {
+    return this.request(`/metrics/habits/${habitId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
 
-    return response.json();
+  // Delete a habit
+  async deleteHabit(habitId) {
+    return this.request(`/metrics/habits/${habitId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Log habit completion
   async logHabit(habitId, date, completed, actualValue, notes) {
-    const response = await fetch(`${API_BASE_URL}/metrics/habits/${habitId}/log`, {
+    return this.request(`/metrics/habits/${habitId}/log`, {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ date, completed, actualValue, notes })
+      body: JSON.stringify({ date, completed, actualValue, notes }),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to log habit');
-    }
-
-    return response.json();
   }
 
   // Get habit logs
   async getHabitLogs(habitId, startDate, endDate) {
     const params = new URLSearchParams({ startDate, endDate });
-    const response = await fetch(`${API_BASE_URL}/metrics/habits/${habitId}/logs?${params}`, {
-      headers: this.getAuthHeaders()
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch habit logs');
-    }
-
-    return response.json();
+    return this.request(`/metrics/habits/${habitId}/logs?${params}`);
   }
 
   // Add metric
   async addMetric(categoryId, date, value, unit, notes) {
-    const response = await fetch(`${API_BASE_URL}/metrics/metrics`, {
+    return this.request('/metrics/metrics', {
       method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ categoryId, date, value, unit, notes })
+      body: JSON.stringify({ categoryId, date, value, unit, notes }),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to add metric');
-    }
-
-    return response.json();
   }
 
   // Get metrics
@@ -103,28 +101,12 @@ class MetricsService {
     const params = new URLSearchParams({ startDate, endDate });
     if (categoryId) params.append('categoryId', categoryId);
 
-    const response = await fetch(`${API_BASE_URL}/metrics/metrics?${params}`, {
-      headers: this.getAuthHeaders()
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch metrics');
-    }
-
-    return response.json();
+    return this.request(`/metrics/metrics?${params}`);
   }
 
   // Get dashboard data
   async getDashboard() {
-    const response = await fetch(`${API_BASE_URL}/metrics/dashboard`, {
-      headers: this.getAuthHeaders()
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch dashboard data');
-    }
-
-    return response.json();
+    return this.request('/metrics/dashboard');
   }
 }
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize');
 const { User, HabitCategory, UserHabit, HabitLog, Metric } = require('../models');
 
 // Middleware to verify JWT token
@@ -19,6 +20,42 @@ const authenticateToken = (req, res, next) => {
     req.user = user;
     next();
   });
+};
+
+const HABIT_INCLUDE = [{ model: HabitCategory, as: 'category' }];
+
+const normalizeHabitName = (value) => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+  return trimmedValue === '' ? null : trimmedValue;
+};
+
+const parseHabitTarget = (value) => {
+  const parsedValue = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    return null;
+  }
+
+  return parsedValue;
+};
+
+const findUserHabit = (habitId, userId) =>
+  UserHabit.findOne({
+    where: { id: habitId, userId },
+    include: HABIT_INCLUDE,
+  });
+
+const handleHabitPersistenceError = (error, res, fallbackMessage) => {
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    return res.status(409).json({ error: 'You already have a habit for this category.' });
+  }
+
+  console.error(fallbackMessage, error);
+  return res.status(500).json({ error: fallbackMessage });
 };
 
 // Get user's habit categories
@@ -55,9 +92,8 @@ router.get('/habits', authenticateToken, async (req, res) => {
   try {
     const habits = await UserHabit.findAll({
       where: { userId: req.user.id },
-      include: [
-        { model: HabitCategory, as: 'category' }
-      ]
+      include: HABIT_INCLUDE,
+      order: [['createdAt', 'DESC']],
     });
     res.json(habits);
   } catch (error) {
@@ -68,22 +104,126 @@ router.get('/habits', authenticateToken, async (req, res) => {
 // Add a habit for user
 router.post('/habits', authenticateToken, async (req, res) => {
   try {
-    const { categoryId, customName, targetValue } = req.body;
+    const { categoryId, customName, targetValue, isActive } = req.body;
+    const parsedCategoryId = Number.parseInt(categoryId, 10);
+    const parsedTargetValue = parseHabitTarget(targetValue);
+
+    if (!Number.isInteger(parsedCategoryId)) {
+      return res.status(400).json({ error: 'A valid habit category is required.' });
+    }
+
+    if (!parsedTargetValue) {
+      return res.status(400).json({ error: 'Target value must be greater than 0.' });
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, 'isActive') &&
+      typeof isActive !== 'boolean'
+    ) {
+      return res.status(400).json({ error: 'Habit status must be either active or inactive.' });
+    }
+
+    const category = await HabitCategory.findByPk(parsedCategoryId);
+    if (!category) {
+      return res.status(404).json({ error: 'Habit category not found.' });
+    }
 
     const habit = await UserHabit.create({
       userId: req.user.id,
-      categoryId,
-      customName,
-      targetValue,
+      categoryId: parsedCategoryId,
+      customName: normalizeHabitName(customName),
+      targetValue: parsedTargetValue,
+      isActive: typeof isActive === 'boolean' ? isActive : true,
     });
 
     const habitWithCategory = await UserHabit.findByPk(habit.id, {
-      include: [{ model: HabitCategory, as: 'category' }]
+      include: HABIT_INCLUDE,
     });
 
     res.status(201).json(habitWithCategory);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create habit' });
+    handleHabitPersistenceError(error, res, 'Failed to create habit');
+  }
+});
+
+// Update an existing habit
+router.patch('/habits/:habitId', authenticateToken, async (req, res) => {
+  try {
+    const { habitId } = req.params;
+    const habit = await findUserHabit(habitId, req.user.id);
+
+    if (!habit) {
+      return res.status(404).json({ error: 'Habit not found' });
+    }
+
+    const updates = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'categoryId')) {
+      const parsedCategoryId = Number.parseInt(req.body.categoryId, 10);
+
+      if (!Number.isInteger(parsedCategoryId)) {
+        return res.status(400).json({ error: 'A valid habit category is required.' });
+      }
+
+      const category = await HabitCategory.findByPk(parsedCategoryId);
+      if (!category) {
+        return res.status(404).json({ error: 'Habit category not found.' });
+      }
+
+      updates.categoryId = parsedCategoryId;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'customName')) {
+      updates.customName = normalizeHabitName(req.body.customName);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'targetValue')) {
+      const parsedTargetValue = parseHabitTarget(req.body.targetValue);
+
+      if (!parsedTargetValue) {
+        return res.status(400).json({ error: 'Target value must be greater than 0.' });
+      }
+
+      updates.targetValue = parsedTargetValue;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'isActive')) {
+      if (typeof req.body.isActive !== 'boolean') {
+        return res.status(400).json({ error: 'Habit status must be either active or inactive.' });
+      }
+
+      updates.isActive = req.body.isActive;
+    }
+
+    await habit.update(updates);
+
+    const updatedHabit = await UserHabit.findByPk(habit.id, {
+      include: HABIT_INCLUDE,
+    });
+
+    res.json(updatedHabit);
+  } catch (error) {
+    handleHabitPersistenceError(error, res, 'Failed to update habit');
+  }
+});
+
+// Delete an existing habit
+router.delete('/habits/:habitId', authenticateToken, async (req, res) => {
+  try {
+    const { habitId } = req.params;
+    const habit = await UserHabit.findOne({
+      where: { id: habitId, userId: req.user.id },
+    });
+
+    if (!habit) {
+      return res.status(404).json({ error: 'Habit not found' });
+    }
+
+    await habit.destroy();
+    res.status(204).send();
+  } catch (error) {
+    console.error('Failed to delete habit', error);
+    res.status(500).json({ error: 'Failed to delete habit' });
   }
 });
 
@@ -135,7 +275,7 @@ router.get('/habits/:habitId/logs', authenticateToken, async (req, res) => {
       where: {
         userHabitId: habitId,
         date: {
-          [require('sequelize').Op.between]: [startDate, endDate]
+          [Op.between]: [startDate, endDate]
         }
       },
       order: [['date', 'ASC']]
@@ -175,7 +315,7 @@ router.get('/metrics', authenticateToken, async (req, res) => {
     const whereClause = {
       userId: req.user.id,
       date: {
-        [require('sequelize').Op.between]: [startDate, endDate]
+        [Op.between]: [startDate, endDate]
       }
     };
 
@@ -214,7 +354,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
 
     // 3. Get last 7 days of logs for the Chart
     const weekLogs = await HabitLog.findAll({
-      where: { date: { [require('sequelize').Op.between]: [weekStart, today] } },
+      where: { date: { [Op.between]: [weekStart, today] } },
       include: [{ model: UserHabit, as: 'userHabit', where: { userId }, required: true }],
       order: [['date', 'ASC']]
     });
