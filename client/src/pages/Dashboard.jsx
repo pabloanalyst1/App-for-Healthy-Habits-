@@ -3,12 +3,22 @@ import { useNavigate } from "react-router-dom";
 import metricsService from "../services/metricsService";
 import authService from "../services/authService";
 import MetricsChart from "../components/MetricsChart";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../components/ui/card";
+
+const CUSTOM_CATEGORY_VALUE = "__custom_category__";
 
 const buildCreateHabitForm = (categories) => {
   const firstCategory = categories[0];
 
   return {
     categoryId: firstCategory ? String(firstCategory.id) : "",
+    customCategoryLabel: "",
     customName: "",
     targetValue:
       firstCategory?.defaultTarget != null ? String(firstCategory.defaultTarget) : "",
@@ -18,9 +28,9 @@ const buildCreateHabitForm = (categories) => {
 
 const buildEditHabitForm = (habit) => ({
   categoryId: String(habit.categoryId ?? habit.category?.id ?? ""),
+  customCategoryLabel: habit.customCategoryLabel || "",
   customName: habit.customName || "",
-  targetValue:
-    habit.targetValue != null ? String(habit.targetValue) : "",
+  targetValue: habit.targetValue != null ? String(habit.targetValue) : "",
   isActive: habit.isActive !== false,
 });
 
@@ -32,6 +42,7 @@ export default function Dashboard() {
   const [userHabits, setUserHabits] = useState([]);
   const [habitCategories, setHabitCategories] = useState([]);
   const [selectedHabit, setSelectedHabit] = useState(null);
+
   const [showHabitModal, setShowHabitModal] = useState(false);
   const [habitModalMode, setHabitModalMode] = useState("create");
   const [editingHabitId, setEditingHabitId] = useState(null);
@@ -39,6 +50,7 @@ export default function Dashboard() {
   const [habitFormError, setHabitFormError] = useState(null);
   const [habitFeedback, setHabitFeedback] = useState(null);
   const [isSavingHabit, setIsSavingHabit] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -69,8 +81,17 @@ export default function Dashboard() {
         metricsService.getCategories(),
       ]);
 
+      const customCategoryMap = JSON.parse(
+        localStorage.getItem("healthyHabitsCustomCategories") || "{}"
+      );
+
+      const mergedHabits = habits.map((habit) => ({
+        ...habit,
+        customCategoryLabel: customCategoryMap[String(habit.id)] || "",
+      }));
+
       setDashboardData(dashboard);
-      setUserHabits(habits);
+      setUserHabits(mergedHabits);
       setHabitCategories(categories);
 
       const nextSelectedHabitId =
@@ -78,7 +99,7 @@ export default function Dashboard() {
 
       setSelectedHabit(
         nextSelectedHabitId
-          ? habits.find((habit) => habit.id === nextSelectedHabitId) || null
+          ? mergedHabits.find((habit) => habit.id === nextSelectedHabitId) || null
           : null
       );
     } catch (err) {
@@ -100,27 +121,9 @@ export default function Dashboard() {
     }
   };
 
-  const availableCreateCategories = useMemo(() => {
-    return habitCategories.filter(
-      (category) =>
-        !userHabits.some((habit) => Number(habit.categoryId) === Number(category.id))
-    );
-  }, [habitCategories, userHabits]);
-
   const modalCategoryOptions = useMemo(() => {
-    if (habitModalMode === "edit") {
-      return habitCategories.filter(
-        (category) =>
-          !userHabits.some(
-            (habit) =>
-              habit.id !== editingHabitId &&
-              Number(habit.categoryId) === Number(category.id)
-          )
-      );
-    }
-
-    return availableCreateCategories;
-  }, [availableCreateCategories, editingHabitId, habitCategories, habitModalMode, userHabits]);
+    return habitCategories;
+  }, [habitCategories]);
 
   const selectedCategory = useMemo(() => {
     return (
@@ -141,19 +144,11 @@ export default function Dashboard() {
   }, [dashboardData, selectedHabit]);
 
   const openCreateHabitModal = () => {
-    if (availableCreateCategories.length === 0) {
-      setHabitFeedback({
-        type: "error",
-        message: "You already added every available habit category.",
-      });
-      return;
-    }
-
     setHabitFeedback(null);
     setHabitFormError(null);
     setHabitModalMode("create");
     setEditingHabitId(null);
-    setHabitForm(buildCreateHabitForm(availableCreateCategories));
+    setHabitForm(buildCreateHabitForm(habitCategories));
     setShowHabitModal(true);
   };
 
@@ -176,6 +171,15 @@ export default function Dashboard() {
     setHabitFormError(null);
 
     if (field === "categoryId") {
+      if (value === CUSTOM_CATEGORY_VALUE) {
+        setHabitForm((prev) => ({
+          ...prev,
+          categoryId: value,
+          targetValue: prev.targetValue || "1",
+        }));
+        return;
+      }
+
       const nextCategory = habitCategories.find(
         (category) => String(category.id) === String(value)
       );
@@ -205,15 +209,38 @@ export default function Dashboard() {
     }));
   };
 
+  const handleQuickCategorySelect = (categoryId) => {
+    const nextCategory = habitCategories.find(
+      (category) => String(category.id) === String(categoryId)
+    );
+
+    if (!nextCategory) return;
+
+    setHabitForm((prev) => ({
+      ...prev,
+      categoryId: String(nextCategory.id),
+      targetValue:
+        habitModalMode === "create"
+          ? String(nextCategory.defaultTarget ?? prev.targetValue)
+          : prev.targetValue,
+    }));
+  };
+
   const handleHabitSubmit = async (event) => {
     event.preventDefault();
     setHabitFormError(null);
 
+    const isCustomCategory = habitForm.categoryId === CUSTOM_CATEGORY_VALUE;
     const parsedCategoryId = Number.parseInt(habitForm.categoryId, 10);
     const parsedTargetValue = Number.parseInt(habitForm.targetValue, 10);
 
-    if (!Number.isInteger(parsedCategoryId)) {
+    if (!isCustomCategory && !Number.isInteger(parsedCategoryId)) {
       setHabitFormError("Please choose a habit category.");
+      return;
+    }
+
+    if (isCustomCategory && !habitForm.customCategoryLabel.trim()) {
+      setHabitFormError("Please write a custom category label.");
       return;
     }
 
@@ -225,9 +252,28 @@ export default function Dashboard() {
     try {
       setIsSavingHabit(true);
 
+      const fallbackCategoryId =
+        habitCategories[0]?.id != null ? Number(habitCategories[0].id) : null;
+
+      if (fallbackCategoryId == null) {
+        setHabitFormError("No default categories are available.");
+        setIsSavingHabit(false);
+        return;
+      }
+
+      const finalCategoryId = isCustomCategory ? fallbackCategoryId : parsedCategoryId;
+
+      const customLabelPrefix = isCustomCategory
+        ? `[${habitForm.customCategoryLabel.trim()}] `
+        : "";
+
+      const finalCustomName = `${
+        customLabelPrefix
+      }${habitForm.customName.trim()}`.trim() || null;
+
       const payload = {
-        categoryId: parsedCategoryId,
-        customName: habitForm.customName.trim() || null,
+        categoryId: finalCategoryId,
+        customName: finalCustomName,
         targetValue: parsedTargetValue,
         isActive: habitForm.isActive,
       };
@@ -242,13 +288,43 @@ export default function Dashboard() {
               payload.isActive
             );
 
+      if (isCustomCategory && savedHabit?.id) {
+        const existingMap = JSON.parse(
+          localStorage.getItem("healthyHabitsCustomCategories") || "{}"
+        );
+        existingMap[String(savedHabit.id)] = habitForm.customCategoryLabel.trim();
+        localStorage.setItem(
+          "healthyHabitsCustomCategories",
+          JSON.stringify(existingMap)
+        );
+      }
+
+      if (habitModalMode === "edit" && editingHabitId) {
+        const existingMap = JSON.parse(
+          localStorage.getItem("healthyHabitsCustomCategories") || "{}"
+        );
+
+        if (isCustomCategory) {
+          existingMap[String(editingHabitId)] = habitForm.customCategoryLabel.trim();
+        } else {
+          delete existingMap[String(editingHabitId)];
+        }
+
+        localStorage.setItem(
+          "healthyHabitsCustomCategories",
+          JSON.stringify(existingMap)
+        );
+      }
+
       closeHabitModal();
       setHabitFeedback({
         type: "success",
         message:
           habitModalMode === "edit"
             ? "Habit updated successfully."
-            : "Habit created successfully.",
+            : isCustomCategory
+              ? "Habit created successfully with a custom category label."
+              : "Habit created successfully.",
       });
       await loadDashboardData(savedHabit?.id);
     } catch (err) {
@@ -261,18 +337,27 @@ export default function Dashboard() {
 
   const handleDeleteHabit = async (habitId) => {
     const habitToDelete = userHabits.find((habit) => habit.id === habitId);
-    const habitLabel = habitToDelete?.customName || habitToDelete?.category?.name || "this habit";
+    const habitLabel =
+      habitToDelete?.customName || habitToDelete?.category?.name || "this habit";
 
     const confirmed = window.confirm(
       `Delete "${habitLabel}"? This will also remove its progress logs.`
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       await metricsService.deleteHabit(habitId);
+
+      const existingMap = JSON.parse(
+        localStorage.getItem("healthyHabitsCustomCategories") || "{}"
+      );
+      delete existingMap[String(habitId)];
+      localStorage.setItem(
+        "healthyHabitsCustomCategories",
+        JSON.stringify(existingMap)
+      );
+
       setHabitFeedback({
         type: "success",
         message: "Habit deleted successfully.",
@@ -352,6 +437,10 @@ export default function Dashboard() {
     { title: "Habits Completed", value: `${completedHabits} / ${totalHabits}` },
     { title: "Active Goals", value: `${activeHabits}` },
   ];
+
+  const getVisibleCategoryName = (habit) => {
+    return habit.customCategoryLabel || habit.category?.name || "Not available";
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -525,308 +614,342 @@ export default function Dashboard() {
           )}
 
           {showHabitModal && (
-            <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(15, 23, 42, 0.45)",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                zIndex: 1000,
-                padding: "20px",
-              }}
-              onClick={closeHabitModal}
-            >
-              <div
-                className="premium-card"
-                style={{
-                  borderRadius: "24px",
-                  padding: "24px",
-                  maxWidth: "640px",
-                  width: "100%",
-                }}
+            <div className="dashboard-modal-overlay" onClick={closeHabitModal}>
+              <Card
+                className="premium-card dashboard-modal-card"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "18px",
-                    gap: "12px",
-                  }}
-                >
+                <CardHeader className="dashboard-modal-header">
                   <div>
-                    <h2 style={{ margin: 0, color: "#0f172a", fontSize: "24px" }}>
+                    <CardTitle className="dashboard-modal-title">
                       {habitModalMode === "edit" ? "Edit Habit" : "Create Habit"}
-                    </h2>
-                    <p className="modal-subtitle">
-                      Choose a category, customize the name, and set a target that
-                      fits the user&apos;s goal.
-                    </p>
+                    </CardTitle>
+                    <CardDescription className="modal-subtitle">
+                      Choose a default category, customize the visible habit name,
+                      or use your own custom category label.
+                    </CardDescription>
                   </div>
 
                   <button
                     type="button"
                     onClick={closeHabitModal}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      fontSize: "24px",
-                      cursor: "pointer",
-                      color: "#64748b",
-                    }}
+                    className="dashboard-modal-close"
                   >
                     ×
                   </button>
-                </div>
+                </CardHeader>
 
-                <form className="section-form" onSubmit={handleHabitSubmit}>
-                  <div className="form-row">
+                <CardContent className="dashboard-modal-content">
+                  <form className="section-form" onSubmit={handleHabitSubmit}>
                     <div className="section-field">
-                      <label htmlFor="habit-category">Category</label>
-                      <select
-                        id="habit-category"
-                        value={habitForm.categoryId}
-                        onChange={(event) =>
-                          handleHabitFormChange("categoryId", event.target.value)
-                        }
-                        className="dashboard-form-control"
-                      >
-                        <option value="">Select a category</option>
+                      <label>Quick Categories</label>
+                      <div className="category-chip-grid">
                         {modalCategoryOptions.map((category) => (
-                          <option key={category.id} value={category.id}>
+                          <button
+                            key={category.id}
+                            type="button"
+                            className={`category-chip-button ${
+                              String(habitForm.categoryId) === String(category.id)
+                                ? "category-chip-button-active"
+                                : ""
+                            }`}
+                            onClick={() => handleQuickCategorySelect(category.id)}
+                          >
                             {category.name}
-                          </option>
+                          </button>
                         ))}
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="section-field">
+                        <label htmlFor="habit-category">Default Category</label>
+                        <select
+                          id="habit-category"
+                          value={habitForm.categoryId}
+                          onChange={(event) =>
+                            handleHabitFormChange("categoryId", event.target.value)
+                          }
+                          className="dashboard-form-control dashboard-select-fix"
+                        >
+                          <option value="">Select a category</option>
+                          {modalCategoryOptions.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.name}
+                            </option>
+                          ))}
+                          <option value={CUSTOM_CATEGORY_VALUE}>Create custom category label</option>
+                        </select>
+                      </div>
+
+                      <div className="section-field">
+                        <label htmlFor="habit-target">
+                          Target {selectedCategory?.unit ? `(${selectedCategory.unit})` : ""}
+                        </label>
+                        <input
+                          id="habit-target"
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={habitForm.targetValue}
+                          onChange={(event) =>
+                            handleHabitFormChange("targetValue", event.target.value)
+                          }
+                          placeholder="Enter target"
+                          className="dashboard-input-fix"
+                        />
+                      </div>
+                    </div>
+
+                    {habitForm.categoryId === CUSTOM_CATEGORY_VALUE && (
+                      <div className="section-field">
+                        <label htmlFor="custom-category-label">Custom Category Label</label>
+                        <input
+                          id="custom-category-label"
+                          type="text"
+                          value={habitForm.customCategoryLabel}
+                          onChange={(event) =>
+                            handleHabitFormChange("customCategoryLabel", event.target.value)
+                          }
+                          placeholder="Example: Estudio, Trabajo, Lectura"
+                          className="dashboard-input-fix"
+                        />
+                        <span className="field-hint">
+                          This creates a custom visible category label for your own organization.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="section-field">
+                      <label htmlFor="habit-name">
+                        Custom Habit Name or Personal Label
+                      </label>
+                      <input
+                        id="habit-name"
+                        type="text"
+                        value={habitForm.customName}
+                        onChange={(event) =>
+                          handleHabitFormChange("customName", event.target.value)
+                        }
+                        placeholder={
+                          selectedCategory?.name
+                            ? `Example: Comida, Entrenar, Estudiar, ${selectedCategory.name}`
+                            : "Example: Comida, Entrenar, Estudiar"
+                        }
+                        className="dashboard-input-fix"
+                      />
+                      <span className="field-hint">
+                        You can keep the default category or write your own visible habit
+                        name, such as Comida, Entrenar, Estudiar, Cardio Morning, or
+                        Protein Lunch.
+                      </span>
+                    </div>
+
+                    <div className="section-field">
+                      <label htmlFor="habit-status">Status</label>
+                      <select
+                        id="habit-status"
+                        value={habitForm.isActive ? "active" : "inactive"}
+                        onChange={(event) =>
+                          handleHabitFormChange("isActive", event.target.value)
+                        }
+                        className="dashboard-form-control dashboard-select-fix"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
                       </select>
                     </div>
 
-                    <div className="section-field">
-                      <label htmlFor="habit-target">
-                        Target {selectedCategory?.unit ? `(${selectedCategory.unit})` : ""}
-                      </label>
-                      <input
-                        id="habit-target"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={habitForm.targetValue}
-                        onChange={(event) =>
-                          handleHabitFormChange("targetValue", event.target.value)
-                        }
-                        placeholder="Enter target"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="section-field">
-                    <label htmlFor="habit-name">Habit Name</label>
-                    <input
-                      id="habit-name"
-                      type="text"
-                      value={habitForm.customName}
-                      onChange={(event) =>
-                        handleHabitFormChange("customName", event.target.value)
-                      }
-                      placeholder={
-                        selectedCategory?.name || "Leave blank to use the category name"
-                      }
-                    />
-                    <span className="field-hint">
-                      Leave this blank if you want to keep the category name as the
-                      visible habit title.
-                    </span>
-                  </div>
-
-                  <div className="section-field">
-                    <label htmlFor="habit-status">Status</label>
-                    <select
-                      id="habit-status"
-                      value={habitForm.isActive ? "active" : "inactive"}
-                      onChange={(event) =>
-                        handleHabitFormChange("isActive", event.target.value)
-                      }
-                      className="dashboard-form-control"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-
-                  {selectedCategory && (
                     <div className="habit-category-hint">
-                      <strong>{selectedCategory.name}</strong>
+                      <strong>How this works</strong>
                       <p>
-                        Default target: {selectedCategory.defaultTarget || 1}{" "}
-                        {selectedCategory.unit || "units"}.
-                        {selectedCategory.description
-                          ? ` ${selectedCategory.description}`
-                          : ""}
+                        The system categories are predefined. You can still personalize
+                        the habit name freely, and you can also add a custom visible
+                        category label like Estudio, Trabajo, or Lectura.
                       </p>
                     </div>
-                  )}
 
-                  {habitFormError && (
-                    <div className="feedback-banner feedback-error">{habitFormError}</div>
-                  )}
+                    {selectedCategory && habitForm.categoryId !== CUSTOM_CATEGORY_VALUE && (
+                      <div className="habit-category-hint">
+                        <strong>{selectedCategory.name}</strong>
+                        <p>
+                          Default target: {selectedCategory.defaultTarget || 1}{" "}
+                          {selectedCategory.unit || "units"}.
+                          {selectedCategory.description
+                            ? ` ${selectedCategory.description}`
+                            : ""}
+                        </p>
+                      </div>
+                    )}
 
-                  <div className="button-row">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={closeHabitModal}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="primary-button"
-                      disabled={isSavingHabit}
-                    >
-                      {isSavingHabit
-                        ? "Saving..."
-                        : habitModalMode === "edit"
-                          ? "Save Changes"
-                          : "Create Habit"}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                    {habitFormError && (
+                      <div className="feedback-banner feedback-error">{habitFormError}</div>
+                    )}
+
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={closeHabitModal}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="primary-button"
+                        disabled={isSavingHabit}
+                      >
+                        {isSavingHabit
+                          ? "Saving..."
+                          : habitModalMode === "edit"
+                            ? "Save Changes"
+                            : "Create Habit"}
+                      </button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           <div className="summary-grid">
             {summaryCards.map((card) => (
-              <div key={card.title} className="summary-card premium-card">
-                <p>{card.title}</p>
-                <h2>{card.value}</h2>
-              </div>
+              <Card
+                key={card.title}
+                className="summary-card premium-card summary-card-premium"
+                size="sm"
+              >
+                <CardContent className="summary-card-content">
+                  <p>{card.title}</p>
+                  <h2>{card.value}</h2>
+                </CardContent>
+              </Card>
             ))}
           </div>
 
           <div className="premium-dashboard-grid">
-            <section className="panel-card premium-card">
-              <div className="panel-header">
-                <h3>Current Habits</h3>
+            <Card className="panel-card premium-card panel-card-premium">
+              <CardHeader className="panel-header">
+                <CardTitle>Current Habits</CardTitle>
                 <span className="tag">Live Data</span>
-              </div>
+              </CardHeader>
 
-              {userHabits.length === 0 ? (
-                <div className="empty-state">
-                  <h4>No habits added yet</h4>
-                  <p>
-                    Start by creating habits so your dashboard can display real
-                    progress data.
-                  </p>
-                </div>
-              ) : (
-                <div className="habit-list">
-                  {userHabits.map((habit) => {
-                    const todayLog = dashboardData?.todayLogs?.find(
-                      (log) => log.habitId === habit.id
-                    );
-                    const isCompleted = todayLog?.completed || false;
-                    const isSelected = selectedHabit?.id === habit.id;
+              <CardContent>
+                {userHabits.length === 0 ? (
+                  <div className="empty-state">
+                    <h4>No habits added yet</h4>
+                    <p>
+                      Start by creating habits so your dashboard can display real
+                      progress data.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="habit-list">
+                    {userHabits.map((habit) => {
+                      const todayLog = dashboardData?.todayLogs?.find(
+                        (log) => log.habitId === habit.id
+                      );
+                      const isCompleted = todayLog?.completed || false;
+                      const isSelected = selectedHabit?.id === habit.id;
 
-                    return (
-                      <div
-                        key={habit.id}
-                        className={`habit-item premium-habit-item ${
-                          habit.isActive === false ? "inactive-habit" : ""
-                        }`}
-                        style={{
-                          borderColor: isSelected ? "#22c55e" : undefined,
-                          background: isSelected ? "#ecfdf5" : undefined,
-                          cursor: "pointer",
-                        }}
-                        onClick={() => setSelectedHabit(habit)}
-                      >
-                        <div className="habit-item-content">
-                          <div className="habit-title-row">
-                            <h4>{habit.customName || habit.category?.name}</h4>
-                            <span
-                              className={`status-badge ${
-                                habit.isActive === false
-                                  ? "pending"
+                      return (
+                        <div
+                          key={habit.id}
+                          className={`habit-item premium-habit-item ${
+                            habit.isActive === false ? "inactive-habit" : ""
+                          }`}
+                          style={{
+                            borderColor: isSelected ? "#22c55e" : undefined,
+                            background: isSelected ? "#ecfdf5" : undefined,
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setSelectedHabit(habit)}
+                        >
+                          <div className="habit-item-content">
+                            <div className="habit-title-row">
+                              <h4>{habit.customName || habit.category?.name}</h4>
+                              <span
+                                className={`status-badge ${
+                                  habit.isActive === false
+                                    ? "pending"
+                                    : isCompleted
+                                      ? "completed"
+                                      : "progress"
+                                }`}
+                              >
+                                {habit.isActive === false
+                                  ? "Inactive"
                                   : isCompleted
-                                    ? "completed"
-                                    : "progress"
-                              }`}
+                                    ? "Completed today"
+                                    : "Active"}
+                              </span>
+                            </div>
+
+                            <p>
+                              {getVisibleCategoryName(habit)} • Target:{" "}
+                              {habit.targetValue} {habit.category?.unit}
+                              {todayLog?.actualValue
+                                ? ` • Today: ${todayLog.actualValue}`
+                                : ""}
+                            </p>
+                          </div>
+
+                          <div className="habit-item-actions">
+                            <button
+                              type="button"
+                              className="secondary-button small-button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openEditHabitModal(habit);
+                              }}
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              className="danger-button small-button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleDeleteHabit(habit.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={habit.isActive === false}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleHabitToggle(habit.id, isCompleted);
+                              }}
+                              className={
+                                isCompleted || habit.isActive === false
+                                  ? "secondary-button small-button"
+                                  : "primary-button small-button"
+                              }
                             >
                               {habit.isActive === false
                                 ? "Inactive"
                                 : isCompleted
-                                  ? "Completed today"
-                                  : "Active"}
-                            </span>
+                                  ? "Completed"
+                                  : "Mark Complete"}
+                            </button>
                           </div>
-
-                          <p>
-                            {habit.category?.name || "Custom habit"} • Target:{" "}
-                            {habit.targetValue} {habit.category?.unit}
-                            {todayLog?.actualValue
-                              ? ` • Today: ${todayLog.actualValue}`
-                              : ""}
-                          </p>
                         </div>
-
-                        <div className="habit-item-actions">
-                          <button
-                            type="button"
-                            className="secondary-button small-button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openEditHabitModal(habit);
-                            }}
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            className="danger-button small-button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleDeleteHabit(habit.id);
-                            }}
-                          >
-                            Delete
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled={habit.isActive === false}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleHabitToggle(habit.id, isCompleted);
-                            }}
-                            className={
-                              isCompleted || habit.isActive === false
-                                ? "secondary-button small-button"
-                                : "primary-button small-button"
-                            }
-                          >
-                            {habit.isActive === false
-                              ? "Inactive"
-                              : isCompleted
-                                ? "Completed"
-                                : "Mark Complete"}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="premium-side-column">
               {selectedHabit && (
-                <section className="panel-card premium-card">
-                  <div className="panel-header">
-                    <h3>Habit Preview</h3>
+                <Card className="panel-card premium-card panel-card-premium">
+                  <CardHeader className="panel-header">
+                    <CardTitle>Habit Preview</CardTitle>
                     <button
                       type="button"
                       onClick={() => setSelectedHabit(null)}
@@ -840,129 +963,139 @@ export default function Dashboard() {
                     >
                       ×
                     </button>
-                  </div>
+                  </CardHeader>
 
-                  <div className="snapshot-list">
-                    <div className="snapshot-item">
-                      <span>Habit</span>
-                      <strong>
-                        {selectedHabit.customName || selectedHabit.category?.name}
-                      </strong>
+                  <CardContent>
+                    <div className="snapshot-list">
+                      <div className="snapshot-item">
+                        <span>Habit</span>
+                        <strong>
+                          {selectedHabit.customName || selectedHabit.category?.name}
+                        </strong>
+                      </div>
+
+                      <div className="snapshot-item">
+                        <span>Category</span>
+                        <strong>{getVisibleCategoryName(selectedHabit)}</strong>
+                      </div>
+
+                      <div className="snapshot-item">
+                        <span>Target</span>
+                        <strong>
+                          {selectedHabit.targetValue} {selectedHabit.category?.unit}
+                        </strong>
+                      </div>
+
+                      <div className="snapshot-item">
+                        <span>Status</span>
+                        <strong>{selectedHabit.isActive ? "Active" : "Inactive"}</strong>
+                      </div>
+
+                      <div className="snapshot-item">
+                        <span>Today</span>
+                        <strong>
+                          {selectedHabit.isActive
+                            ? selectedHabitTodayLog?.completed
+                              ? "Completed"
+                              : "Pending"
+                            : "Not tracking"}
+                        </strong>
+                      </div>
                     </div>
 
-                    <div className="snapshot-item">
-                      <span>Category</span>
-                      <strong>{selectedHabit.category?.name || "Not available"}</strong>
+                    <div className="button-row">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        onClick={() => openEditHabitModal(selectedHabit)}
+                      >
+                        Edit Habit
+                      </button>
+                      <button
+                        type="button"
+                        className="danger-button"
+                        onClick={() => handleDeleteHabit(selectedHabit.id)}
+                      >
+                        Delete Habit
+                      </button>
                     </div>
-
-                    <div className="snapshot-item">
-                      <span>Target</span>
-                      <strong>
-                        {selectedHabit.targetValue} {selectedHabit.category?.unit}
-                      </strong>
-                    </div>
-
-                    <div className="snapshot-item">
-                      <span>Status</span>
-                      <strong>{selectedHabit.isActive ? "Active" : "Inactive"}</strong>
-                    </div>
-
-                    <div className="snapshot-item">
-                      <span>Today</span>
-                      <strong>
-                        {selectedHabit.isActive
-                          ? selectedHabitTodayLog?.completed
-                            ? "Completed"
-                            : "Pending"
-                          : "Not tracking"}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="button-row">
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => openEditHabitModal(selectedHabit)}
-                    >
-                      Edit Habit
-                    </button>
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => handleDeleteHabit(selectedHabit.id)}
-                    >
-                      Delete Habit
-                    </button>
-                  </div>
-                </section>
+                  </CardContent>
+                </Card>
               )}
 
-              <section className="panel-card premium-card">
-                <div className="panel-header">
-                  <h3>Progress Overview</h3>
+              <Card className="panel-card premium-card panel-card-premium">
+                <CardHeader className="panel-header">
+                  <CardTitle>Progress Overview</CardTitle>
                   <span className="tag">Chart</span>
-                </div>
+                </CardHeader>
 
-                <MetricsChart title="Daily Completions" />
-              </section>
+                <CardContent>
+                  <MetricsChart title="Daily Completions" />
+                </CardContent>
+              </Card>
 
-              <section className="panel-card premium-card">
-                <div className="panel-header">
-                  <h3>Quick Summary</h3>
+              <Card className="panel-card premium-card panel-card-premium">
+                <CardHeader className="panel-header">
+                  <CardTitle>Quick Summary</CardTitle>
                   <span className="tag">Insights</span>
-                </div>
+                </CardHeader>
 
-                <p className="panel-text">
-                  {dashboardData?.completedToday > 0
-                    ? `Great job! You've completed ${dashboardData.completedToday} habit${
-                        dashboardData.completedToday > 1 ? "s" : ""
-                      } today. Keep the momentum going.`
-                    : "No habits completed today yet. Start building your streak by completing your first habit."}
-                </p>
-              </section>
+                <CardContent>
+                  <p className="panel-text">
+                    {dashboardData?.completedToday > 0
+                      ? `Great job! You've completed ${dashboardData.completedToday} habit${
+                          dashboardData.completedToday > 1 ? "s" : ""
+                        } today. Keep the momentum going.`
+                      : "No habits completed today yet. Start building your streak by completing your first habit."}
+                  </p>
+                </CardContent>
+              </Card>
 
-              <section className="panel-card premium-card">
-                <div className="panel-header">
-                  <h3>Weekly Completion</h3>
+              <Card className="panel-card premium-card panel-card-premium">
+                <CardHeader className="panel-header">
+                  <CardTitle>Weekly Completion</CardTitle>
                   <span className="tag">Analytics</span>
-                </div>
+                </CardHeader>
 
-                <div className="progress-bar premium-progress">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${completionRate}%` }}
-                  />
-                </div>
+                <CardContent>
+                  <div className="progress-bar premium-progress">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${completionRate}%` }}
+                    />
+                  </div>
 
-                <p className="panel-text">
-                  {completionRate}% of your weekly goal completed.
-                </p>
-              </section>
+                  <p className="panel-text">
+                    {completionRate}% of your weekly goal completed.
+                  </p>
+                </CardContent>
+              </Card>
 
-              <section className="panel-card premium-card">
-                <div className="panel-header">
-                  <h3>Status Breakdown</h3>
+              <Card className="panel-card premium-card panel-card-premium">
+                <CardHeader className="panel-header">
+                  <CardTitle>Status Breakdown</CardTitle>
                   <span className="tag">Summary</span>
-                </div>
+                </CardHeader>
 
-                <div className="snapshot-list">
-                  <div className="snapshot-item">
-                    <span>Completed</span>
-                    <strong>{completedHabits}</strong>
-                  </div>
+                <CardContent>
+                  <div className="snapshot-list">
+                    <div className="snapshot-item">
+                      <span>Completed</span>
+                      <strong>{completedHabits}</strong>
+                    </div>
 
-                  <div className="snapshot-item">
-                    <span>In Progress</span>
-                    <strong>{activeHabits}</strong>
-                  </div>
+                    <div className="snapshot-item">
+                      <span>In Progress</span>
+                      <strong>{activeHabits}</strong>
+                    </div>
 
-                  <div className="snapshot-item">
-                    <span>Pending</span>
-                    <strong>{pendingHabits}</strong>
+                    <div className="snapshot-item">
+                      <span>Pending</span>
+                      <strong>{pendingHabits}</strong>
+                    </div>
                   </div>
-                </div>
-              </section>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </main>

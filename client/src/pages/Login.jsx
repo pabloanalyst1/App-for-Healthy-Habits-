@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AuthCard from "../components/AuthCard";
 import AuthInput from "../components/AuthInput";
 import AuthButton from "../components/AuthButton";
 import authService from "../services/authService";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "../components/ui/card";
 import "../styles/auth.css";
 
 export default function Login() {
@@ -32,79 +39,97 @@ export default function Login() {
   };
 
   return (
-    <AuthCard
-      title="Healthy Habits"
-      subtitle="Sign in to manage your goals, review your progress, and continue building a healthier routine."
-      footer={
-        <p>
-          Don&apos;t have an account?{" "}
-          <span onClick={() => navigate("/register")}>Create one here</span>
-        </p>
-      }
-    >
-      <div className="auth-badge-row">
-        <span className="auth-badge">Wellness Tracker</span>
-        <span className="auth-badge">Secure Access</span>
-      </div>
+    <div className="auth-page">
+      <Card className="auth-card auth-card-premium">
+        <CardHeader className="auth-header auth-header-premium">
+          <CardTitle className="auth-title">Healthy Habits</CardTitle>
+          <CardDescription className="auth-subtitle">
+            Sign in to manage your goals, review your progress, and continue
+            building a healthier routine.
+          </CardDescription>
+        </CardHeader>
 
-      <form className="auth-form" onSubmit={handleSubmit}>
-        {error && (
-          <div className="error-message" style={{ color: "red", marginBottom: "10px" }}>
-            {error}
+        <CardContent>
+          <div className="auth-badge-row">
+            <span className="auth-badge">Wellness Tracker</span>
+            <span className="auth-badge">Secure Access</span>
           </div>
-        )}
 
-        <AuthInput
-          id="login-email"
-          label="Email Address"
-          type="email"
-          placeholder="Enter your email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
+          <form className="auth-form" onSubmit={handleSubmit}>
+            {error && (
+              <div
+                className="error-message"
+                style={{ color: "red", marginBottom: "10px" }}
+              >
+                {error}
+              </div>
+            )}
 
-        <AuthInput
-          id="login-password"
-          label="Password"
-          type="password"
-          placeholder="Enter your password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
+            <AuthInput
+              id="login-email"
+              label="Email Address"
+              type="email"
+              placeholder="Enter your email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
 
-        <div className="auth-options premium-auth-options">
-          <label className="remember-me">
-            <input type="checkbox" />
-            Keep me signed in
-          </label>
+            <AuthInput
+              id="login-password"
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
 
-          <button
-            type="button"
-            className="auth-text-button"
-            onClick={() => alert("Password recovery flow can be connected later.")}
-          >
-            Forgot password?
-          </button>
-        </div>
+            <div className="auth-options premium-auth-options">
+              <label className="remember-me">
+                <input type="checkbox" />
+                Keep me signed in
+              </label>
 
-        <AuthButton text={loading ? "Logging in..." : "Sign In"} disabled={loading} />
-      </form>
+              <button
+                type="button"
+                className="auth-text-button"
+                onClick={() =>
+                  alert("Password recovery flow can be connected later.")
+                }
+              >
+                Forgot password?
+              </button>
+            </div>
 
-      <div className="auth-info-panel">
-        <div className="auth-info-item">
-          <span>Focus</span>
-          <strong>Daily goals and healthy routines</strong>
-        </div>
+            <AuthButton
+              text={loading ? "Logging in..." : "Sign In"}
+              disabled={loading}
+            />
+          </form>
 
-        <div className="auth-info-item">
-          <span>Access</span>
-          <strong>Login prepared for backend integration</strong>
-        </div>
-      </div>
-    </AuthCard>
+          <div className="auth-info-panel">
+            <div className="auth-info-item">
+              <span>Focus</span>
+              <strong>Daily goals and healthy routines</strong>
+            </div>
+
+            <div className="auth-info-item">
+              <span>Access</span>
+              <strong>Login prepared for backend integration</strong>
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="auth-footer auth-footer-premium">
+          <p>
+            Don&apos;t have an account?{" "}
+            <span onClick={() => navigate("/register")}>Create one here</span>
+          </p>
+        </CardFooter>
+      </Card>
+    </div>
   );
 }

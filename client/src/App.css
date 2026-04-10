@@ -998,3 +998,327 @@
   color: #64748b;
   font-size: 14px;
 }
+.ui-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #0f172a;
+  padding: 16px 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow:
+    0 18px 45px rgba(15, 23, 42, 0.08),
+    0 2px 10px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.ui-card-sm {
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.ui-card-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 0 20px;
+}
+
+.ui-card-title {
+  font-size: 1.05rem;
+  line-height: 1.3;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ui-card-description {
+  font-size: 0.95rem;
+  color: #64748b;
+  grid-column: 1 / 2;
+}
+
+.ui-card-action {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+  align-self: start;
+  justify-self: end;
+}
+
+.ui-card-content {
+  padding: 0 20px;
+}
+
+.ui-card-footer {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.ui-card.ui-card-sm .ui-card-header,
+.ui-card.ui-card-sm .ui-card-content,
+.ui-card.ui-card-sm .ui-card-footer {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.ui-card.ui-card-sm .ui-card-footer {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.dashboard-modal-card {
+  max-width: 640px;
+  width: 100%;
+  border-radius: 24px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.dashboard-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dashboard-modal-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.summary-card-premium {
+  min-height: 140px;
+  justify-content: center;
+}
+
+.summary-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 100%;
+}
+
+.summary-card-content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.summary-card-content h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.panel-card-premium {
+  padding: 0;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.panel-card-premium .panel-header {
+  margin-bottom: 0;
+}
+
+.panel-card-premium .ui-card-content {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.profile-form-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile-form-card .ui-card-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.profile-form-description {
+  margin-top: 6px;
+  color: #64748b;
+  line-height: 1.6;
+}
+.dashboard-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.dashboard-modal-card {
+  width: 100%;
+  max-width: 980px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 28px;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+}
+
+.dashboard-modal-content {
+  padding-bottom: 28px;
+}
+
+.dashboard-modal-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #ffffff;
+  padding-bottom: 18px;
+}
+
+.dashboard-modal-title {
+  color: #0f172a !important;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.modal-subtitle {
+  margin-top: 8px;
+  color: #64748b !important;
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.dashboard-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.dashboard-modal-card .section-field label {
+  display: block;
+  margin-bottom: 10px;
+  color: #0f172a !important;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.dashboard-modal-card select,
+.dashboard-modal-card input,
+.dashboard-form-control,
+.dashboard-select-fix,
+.dashboard-input-fix {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 16px;
+  border: 1px solid #d9e2d9;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 14px 16px;
+  box-sizing: border-box;
+  appearance: auto !important;
+  -webkit-appearance: menulist !important;
+  -moz-appearance: menulist !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.dashboard-modal-card select:focus,
+.dashboard-modal-card input:focus,
+.dashboard-form-control:focus,
+.dashboard-select-fix:focus,
+.dashboard-input-fix:focus {
+  outline: none;
+  border-color: #86d293;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+  color: #0f172a !important;
+  background: #ffffff !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.dashboard-modal-card select option,
+.dashboard-form-control option,
+.dashboard-select-fix option {
+  color: #0f172a !important;
+  background: #ffffff !important;
+}
+
+.dashboard-modal-card input::placeholder,
+.dashboard-input-fix::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+.dashboard-modal-card select:not(:focus),
+.dashboard-modal-card input:not(:focus) {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.category-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.category-chip-button {
+  border: 1px solid #d9e2d9;
+  background: #f8faf8;
+  color: #166534;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.category-chip-button:hover {
+  background: #ecfdf3;
+  border-color: #86d293;
+}
+
+.category-chip-button-active {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+}
+
+.dashboard-modal-card .field-hint {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.dashboard-modal-card .habit-category-hint {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 16px 18px;
+}
+
+.dashboard-modal-card .habit-category-hint strong {
+  display: block;
+  color: #0f172a;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.dashboard-modal-card .habit-category-hint p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
