@@ -7,6 +7,10 @@ import {
   CardDescription,
   CardContent,
 } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field, FieldLabel, FieldDescription } from "../components/ui/field";
+import { Input } from "../components/ui/input";
 
 const defaultHabit = {
   title: "",
@@ -143,18 +147,27 @@ export default function Habits() {
     setHabits(updatedHabits);
   };
 
+  const getProgressBadgeVariant = (progress) => {
+    if (progress === "Completed") return "success";
+    if (progress === "In Progress") return "warning";
+    return "outline";
+  };
+
   return (
     <div className="section-page">
       <div className="section-container">
-        <div className="section-top-bar">
+        <div className="section-top-bar premium-top-bar">
           <div>
+            <p className="topbar-kicker">Habit Management</p>
             <h1>Objectives Creation</h1>
-            <p>Create, update, manage, and review healthy habits and personal goals.</p>
+            <p className="topbar-description">
+              Create, update, manage, and review healthy habits and personal goals.
+            </p>
           </div>
 
-          <button className="secondary-button" onClick={() => navigate("/dashboard")}>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
             Back to Dashboard
-          </button>
+          </Button>
         </div>
 
         <div className="summary-grid">
@@ -196,54 +209,65 @@ export default function Habits() {
                   Add and manage personal habit goals with a clear and organized workflow.
                 </CardDescription>
               </div>
-              <span className="tag">{editingId ? "Edit Mode" : "New Objective"}</span>
+              <Badge variant={editingId ? "info" : "success"}>
+                {editingId ? "Edit Mode" : "New Objective"}
+              </Badge>
             </CardHeader>
 
             <CardContent>
               <form className="section-form" onSubmit={handleSubmit}>
-                <div className="section-field">
-                  <label htmlFor="title">Habit Title</label>
-                  <input
+                <Field className="section-field">
+                  <FieldLabel>Habit Title</FieldLabel>
+                  <Input
                     id="title"
                     type="text"
                     placeholder="Example: Morning walk"
                     value={habitForm.title}
                     onChange={handleChange}
+                    className="dashboard-input-modern"
+                    nativeInput
                   />
-                </div>
+                  <FieldDescription>
+                    Write a short and clear name for the habit.
+                  </FieldDescription>
+                </Field>
 
                 <div className="form-row">
-                  <div className="section-field">
-                    <label htmlFor="type">Habit Type</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Habit Type</FieldLabel>
+                    <Input
                       id="type"
                       type="text"
                       placeholder="Example: Cardio, Nutrition, Sleep"
                       value={habitForm.type}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
 
-                  <div className="section-field">
-                    <label htmlFor="target">Goal Target</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Goal Target</FieldLabel>
+                    <Input
                       id="target"
                       type="text"
                       placeholder="Example: 30 minutes or 500 calories"
                       value={habitForm.target}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
                 </div>
 
                 <div className="button-row">
-                  <button className="primary-button" type="submit">
+                  <Button type="submit">
                     {editingId ? "Save Changes" : "Add Habit"}
-                  </button>
+                  </Button>
 
-                  <button className="secondary-button" type="button" onClick={resetForm}>
+                  <Button variant="outline" type="button" onClick={resetForm}>
                     Clear Form
-                  </button>
+                  </Button>
                 </div>
 
                 {message && <p className="success-message">{message}</p>}
@@ -259,7 +283,7 @@ export default function Habits() {
                   Follow measurable progress and keep a clearer view of performance.
                 </CardDescription>
               </div>
-              <span className="tag">Progress Data</span>
+              <Badge variant="info">Progress Data</Badge>
             </CardHeader>
 
             <CardContent>
@@ -304,7 +328,7 @@ export default function Habits() {
                 Review and manage all current objectives from one place.
               </CardDescription>
             </div>
-            <span className="tag">Manage Objectives</span>
+            <Badge variant="outline">Manage Objectives</Badge>
           </CardHeader>
 
           <CardContent>
@@ -318,7 +342,7 @@ export default function Habits() {
             ) : (
               <div className="habit-list">
                 {habits.map((habit) => (
-                  <div key={habit.id} className="habit-item advanced-habit-item">
+                  <div key={habit.id} className="habit-item advanced-habit-item premium-habit-item">
                     <div className="habit-main-info">
                       <div>
                         <h4>{habit.title}</h4>
@@ -327,43 +351,38 @@ export default function Habits() {
                         </p>
                       </div>
 
-                      <span
-                        className={`status-badge ${
-                          habit.progress === "Completed"
-                            ? "completed"
-                            : habit.progress === "In Progress"
-                              ? "progress"
-                              : "pending"
-                        }`}
-                      >
+                      <Badge variant={getProgressBadgeVariant(habit.progress)}>
                         {habit.progress}
-                      </span>
+                      </Badge>
                     </div>
 
                     <div className="habit-actions-row">
-                      <button
-                        className="secondary-button small-button"
+                      <Button
+                        variant="outline"
+                        size="sm"
                         type="button"
                         onClick={() => handleEditHabit(habit)}
                       >
                         Edit
-                      </button>
+                      </Button>
 
-                      <button
-                        className="secondary-button small-button"
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         type="button"
                         onClick={() => handleToggleProgress(habit.id)}
                       >
                         Change Status
-                      </button>
+                      </Button>
 
-                      <button
-                        className="danger-button small-button"
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         type="button"
                         onClick={() => handleDeleteHabit(habit.id)}
                       >
                         Delete
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

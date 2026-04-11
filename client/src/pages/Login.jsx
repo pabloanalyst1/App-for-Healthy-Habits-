@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AuthInput from "../components/AuthInput";
-import AuthButton from "../components/AuthButton";
 import authService from "../services/authService";
 import {
   Card,
@@ -11,6 +9,10 @@ import {
   CardContent,
   CardFooter,
 } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Field, FieldLabel, FieldDescription } from "../components/ui/field";
+import { Input } from "../components/ui/input";
 import "../styles/auth.css";
 
 export default function Login() {
@@ -51,8 +53,8 @@ export default function Login() {
 
         <CardContent>
           <div className="auth-badge-row">
-            <span className="auth-badge">Wellness Tracker</span>
-            <span className="auth-badge">Secure Access</span>
+            <Badge variant="success">Wellness Tracker</Badge>
+            <Badge variant="info">Secure Access</Badge>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
@@ -65,27 +67,41 @@ export default function Login() {
               </div>
             )}
 
-            <AuthInput
-              id="login-email"
-              label="Email Address"
-              type="email"
-              placeholder="Enter your email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+            <Field className="section-field">
+              <FieldLabel>Email Address</FieldLabel>
+              <Input
+                id="login-email"
+                type="email"
+                placeholder="Enter your email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="dashboard-input-modern"
+                nativeInput
+              />
+              <FieldDescription>
+                Use the email associated with your account.
+              </FieldDescription>
+            </Field>
 
-            <AuthInput
-              id="login-password"
-              label="Password"
-              type="password"
-              placeholder="Enter your password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
+            <Field className="section-field">
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                id="login-password"
+                type="password"
+                placeholder="Enter your password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="dashboard-input-modern"
+                nativeInput
+              />
+              <FieldDescription>
+                Keep your account secure with a strong password.
+              </FieldDescription>
+            </Field>
 
             <div className="auth-options premium-auth-options">
               <label className="remember-me">
@@ -104,10 +120,9 @@ export default function Login() {
               </button>
             </div>
 
-            <AuthButton
-              text={loading ? "Logging in..." : "Sign In"}
-              disabled={loading}
-            />
+            <Button type="submit" loading={loading} disabled={loading}>
+              Sign In
+            </Button>
           </form>
 
           <div className="auth-info-panel">

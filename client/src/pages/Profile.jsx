@@ -7,6 +7,10 @@ import {
   CardDescription,
   CardContent,
 } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field, FieldLabel, FieldDescription } from "../components/ui/field";
+import { Input } from "../components/ui/input";
 
 const defaultProfile = {
   fullName: "",
@@ -105,9 +109,9 @@ export default function Profile() {
             <p>Manage your personal information, health metrics, and account identity.</p>
           </div>
 
-          <button className="secondary-button" onClick={() => navigate("/dashboard")}>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
             Back to Dashboard
-          </button>
+          </Button>
         </div>
 
         <div className="profile-premium-layout">
@@ -130,7 +134,9 @@ export default function Profile() {
               <div className="profile-identity-content">
                 <h2>{displayName}</h2>
                 <p className="profile-username">{displayUsername}</p>
-                <span className="profile-badge">Healthy Habits Member</span>
+                <Badge variant="success" size="lg" className="profile-badge">
+                  Healthy Habits Member
+                </Badge>
 
                 <div className="profile-meta-grid">
                   <div className="profile-meta-item">
@@ -170,99 +176,118 @@ export default function Profile() {
                   Update your personal details, profile identity, and health preferences.
                 </CardDescription>
               </div>
-              <span className="tag">Personal Settings</span>
+              <Badge variant="info">Personal Settings</Badge>
             </CardHeader>
 
             <CardContent>
               <form className="section-form" onSubmit={handleSubmit}>
                 <div className="profile-upload-section">
-                  <div className="section-field">
-                    <label htmlFor="profilePhoto">Profile Photo</label>
+                  <Field className="section-field">
+                    <FieldLabel>Profile Photo</FieldLabel>
                     <input
                       id="profilePhoto"
                       type="file"
                       accept="image/*"
                       onChange={handlePhotoChange}
                     />
-                  </div>
+                    <FieldDescription>
+                      Upload a profile image to personalize your account.
+                    </FieldDescription>
+                  </Field>
 
-                  <div className="section-field">
-                    <label htmlFor="username">Username</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Username</FieldLabel>
+                    <Input
                       id="username"
                       type="text"
                       placeholder="Example: mario.astonitas"
                       value={profile.username}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                    <FieldDescription>
+                      This will appear as your visible account username.
+                    </FieldDescription>
+                  </Field>
                 </div>
 
                 <div className="form-row">
-                  <div className="section-field">
-                    <label htmlFor="fullName">Full Name</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Full Name</FieldLabel>
+                    <Input
                       id="fullName"
                       type="text"
                       placeholder="Enter your full name"
                       value={profile.fullName}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
 
-                  <div className="section-field">
-                    <label htmlFor="email">Email Address</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Email Address</FieldLabel>
+                    <Input
                       id="email"
                       type="email"
                       placeholder="Enter your email"
                       value={profile.email}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
                 </div>
 
                 <div className="form-row">
-                  <div className="section-field">
-                    <label htmlFor="weight">Weight (kg)</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Weight (kg)</FieldLabel>
+                    <Input
                       id="weight"
                       type="number"
                       step="0.1"
                       placeholder="Example: 67.5"
                       value={profile.weight}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
 
-                  <div className="section-field">
-                    <label htmlFor="height">Height (cm)</label>
-                    <input
+                  <Field className="section-field">
+                    <FieldLabel>Height (cm)</FieldLabel>
+                    <Input
                       id="height"
                       type="number"
                       step="0.1"
                       placeholder="Example: 165.5"
                       value={profile.height}
                       onChange={handleChange}
+                      className="dashboard-input-modern"
+                      nativeInput
                     />
-                  </div>
+                  </Field>
                 </div>
 
-                <div className="section-field">
-                  <label htmlFor="goal">Personal Goal</label>
-                  <input
+                <Field className="section-field">
+                  <FieldLabel>Personal Goal</FieldLabel>
+                  <Input
                     id="goal"
                     type="text"
                     placeholder="Example: Improve consistency, stamina, and overall health"
                     value={profile.goal}
                     onChange={handleChange}
+                    className="dashboard-input-modern"
+                    nativeInput
                   />
-                </div>
+                  <FieldDescription>
+                    Define the main health goal you want to focus on.
+                  </FieldDescription>
+                </Field>
 
                 <div className="button-row">
-                  <button className="primary-button" type="submit">
-                    Save Profile
-                  </button>
+                  <Button type="submit">Save Profile</Button>
                 </div>
 
                 {message && <p className="success-message">{message}</p>}

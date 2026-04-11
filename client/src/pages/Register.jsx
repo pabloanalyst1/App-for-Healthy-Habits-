@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AuthInput from "../components/AuthInput";
-import AuthButton from "../components/AuthButton";
 import authService from "../services/authService";
 import {
   Card,
@@ -11,6 +9,10 @@ import {
   CardContent,
   CardFooter,
 } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Field, FieldLabel, FieldDescription } from "../components/ui/field";
+import { Input } from "../components/ui/input";
 import "../styles/auth.css";
 
 export default function Register() {
@@ -59,8 +61,8 @@ export default function Register() {
 
         <CardContent>
           <div className="auth-badge-row">
-            <span className="auth-badge">New Member</span>
-            <span className="auth-badge">Health Profile</span>
+            <Badge variant="success">New Member</Badge>
+            <Badge variant="info">Health Profile</Badge>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
@@ -82,38 +84,59 @@ export default function Register() {
               </div>
             )}
 
-            <AuthInput
-              id="register-name"
-              label="Full Name"
-              type="text"
-              placeholder="Enter your full name"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              required
-            />
+            <Field className="section-field">
+              <FieldLabel>Full Name</FieldLabel>
+              <Input
+                id="register-name"
+                type="text"
+                placeholder="Enter your full name"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                required
+                className="dashboard-input-modern"
+                nativeInput
+              />
+              <FieldDescription>
+                Enter the name you want associated with your account.
+              </FieldDescription>
+            </Field>
 
-            <AuthInput
-              id="register-email"
-              label="Email Address"
-              type="email"
-              placeholder="Enter your email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
+            <Field className="section-field">
+              <FieldLabel>Email Address</FieldLabel>
+              <Input
+                id="register-email"
+                type="email"
+                placeholder="Enter your email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="dashboard-input-modern"
+                nativeInput
+              />
+              <FieldDescription>
+                This email will be used for account access and identification.
+              </FieldDescription>
+            </Field>
 
-            <AuthInput
-              id="register-password"
-              label="Password"
-              type="password"
-              placeholder="Create a password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
+            <Field className="section-field">
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                id="register-password"
+                type="password"
+                placeholder="Create a password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="dashboard-input-modern"
+                nativeInput
+              />
+              <FieldDescription>
+                Choose a secure password for your new account.
+              </FieldDescription>
+            </Field>
 
             <div className="register-note">
               <p>
@@ -122,10 +145,9 @@ export default function Register() {
               </p>
             </div>
 
-            <AuthButton
-              text={loading ? "Creating account..." : "Create Account"}
-              disabled={loading}
-            />
+            <Button type="submit" loading={loading} disabled={loading}>
+              Create Account
+            </Button>
           </form>
 
           <div className="auth-info-panel">

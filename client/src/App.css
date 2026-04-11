@@ -1565,3 +1565,49 @@
     flex: 1 1 auto;
   }
 }
+.habits-form-card,
+.habits-tracking-card,
+.habits-list-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.habits-form-card .ui-card-content,
+.habits-tracking-card .ui-card-content,
+.habits-list-card .ui-card-content {
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.habits-card-description {
+  margin-top: 6px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.habit-actions-row [data-slot="button"] {
+  min-height: 38px;
+}
+
+@media (max-width: 900px) {
+  .habit-actions-row {
+    width: 100%;
+  }
+
+  .habit-actions-row [data-slot="button"] {
+    flex: 1 1 auto;
+  }
+}
+.profile-form-card [data-slot="badge"] {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.profile-identity-card .profile-badge {
+  align-self: center;
+  margin-top: 14px;
+}
+
+.profile-form-card [data-slot="button"] {
+  min-width: 160px;
+}
