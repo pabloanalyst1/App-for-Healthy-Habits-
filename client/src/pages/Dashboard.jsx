@@ -10,6 +10,22 @@ import {
   CardDescription,
   CardContent,
 } from "../components/ui/card";
+import {
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldError,
+} from "../components/ui/field";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "../components/ui/select";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 
 const CUSTOM_CATEGORY_VALUE = "__custom_category__";
 
@@ -442,6 +458,18 @@ export default function Dashboard() {
     return habit.customCategoryLabel || habit.category?.name || "Not available";
   };
 
+  const getHabitBadgeVariant = (habit, isCompleted) => {
+    if (habit.isActive === false) return "outline";
+    if (isCompleted) return "success";
+    return "warning";
+  };
+
+  const getHabitBadgeText = (habit, isCompleted) => {
+    if (habit.isActive === false) return "Inactive";
+    if (isCompleted) return "Completed today";
+    return "Active";
+  };
+
   const handleLogout = () => {
     authService.logout();
     navigate("/");
@@ -482,21 +510,10 @@ export default function Dashboard() {
         <p style={{ color: "#64748b", margin: 0 }}>{error}</p>
 
         <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-          <button
-            onClick={() => loadDashboardData()}
-            className="primary-button"
-            type="button"
-          >
-            Try Again
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="secondary-button"
-            type="button"
-          >
+          <Button onClick={() => loadDashboardData()}>Try Again</Button>
+          <Button variant="outline" onClick={handleLogout}>
             Logout
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -590,16 +607,11 @@ export default function Dashboard() {
             </div>
 
             <div className="top-bar-actions">
-              <button
-                className="secondary-button"
-                onClick={() => navigate("/profile")}
-              >
+              <Button variant="outline" onClick={() => navigate("/profile")}>
                 Edit Profile
-              </button>
+              </Button>
 
-              <button className="primary-button" onClick={openCreateHabitModal}>
-                + Add Habit
-              </button>
+              <Button onClick={openCreateHabitModal}>+ Add Habit</Button>
             </div>
           </div>
 
@@ -641,8 +653,8 @@ export default function Dashboard() {
 
                 <CardContent className="dashboard-modal-content">
                   <form className="section-form" onSubmit={handleHabitSubmit}>
-                    <div className="section-field">
-                      <label>Quick Categories</label>
+                    <Field>
+                      <FieldLabel>Quick Categories</FieldLabel>
                       <div className="category-chip-grid">
                         {modalCategoryOptions.map((category) => (
                           <button
@@ -659,34 +671,44 @@ export default function Dashboard() {
                           </button>
                         ))}
                       </div>
-                    </div>
+                      <FieldDescription>
+                        Choose one of the predefined categories for faster setup.
+                      </FieldDescription>
+                    </Field>
 
                     <div className="form-row">
-                      <div className="section-field">
-                        <label htmlFor="habit-category">Default Category</label>
-                        <select
-                          id="habit-category"
+                      <Field className="section-field">
+                        <FieldLabel>Default Category</FieldLabel>
+                        <Select
                           value={habitForm.categoryId}
-                          onChange={(event) =>
-                            handleHabitFormChange("categoryId", event.target.value)
+                          onValueChange={(value) =>
+                            handleHabitFormChange("categoryId", value)
                           }
-                          className="dashboard-form-control dashboard-select-fix"
                         >
-                          <option value="">Select a category</option>
-                          {modalCategoryOptions.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                          <option value={CUSTOM_CATEGORY_VALUE}>Create custom category label</option>
-                        </select>
-                      </div>
+                          <SelectTrigger className="dashboard-select-modern">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectPopup>
+                            {modalCategoryOptions.map((category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={String(category.id)}
+                              >
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value={CUSTOM_CATEGORY_VALUE}>
+                              Create custom category label
+                            </SelectItem>
+                          </SelectPopup>
+                        </Select>
+                      </Field>
 
-                      <div className="section-field">
-                        <label htmlFor="habit-target">
+                      <Field className="section-field">
+                        <FieldLabel>
                           Target {selectedCategory?.unit ? `(${selectedCategory.unit})` : ""}
-                        </label>
-                        <input
+                        </FieldLabel>
+                        <Input
                           id="habit-target"
                           type="number"
                           min="1"
@@ -696,35 +718,35 @@ export default function Dashboard() {
                             handleHabitFormChange("targetValue", event.target.value)
                           }
                           placeholder="Enter target"
-                          className="dashboard-input-fix"
+                          className="dashboard-input-modern"
+                          nativeInput
                         />
-                      </div>
+                      </Field>
                     </div>
 
                     {habitForm.categoryId === CUSTOM_CATEGORY_VALUE && (
-                      <div className="section-field">
-                        <label htmlFor="custom-category-label">Custom Category Label</label>
-                        <input
+                      <Field className="section-field">
+                        <FieldLabel>Custom Category Label</FieldLabel>
+                        <Input
                           id="custom-category-label"
                           type="text"
                           value={habitForm.customCategoryLabel}
                           onChange={(event) =>
                             handleHabitFormChange("customCategoryLabel", event.target.value)
                           }
-                          placeholder="Example: Estudio, Trabajo, Lectura"
-                          className="dashboard-input-fix"
+                          placeholder="Example: Studying, Work, Reading"
+                          className="dashboard-input-modern"
+                          nativeInput
                         />
-                        <span className="field-hint">
+                        <FieldDescription>
                           This creates a custom visible category label for your own organization.
-                        </span>
-                      </div>
+                        </FieldDescription>
+                      </Field>
                     )}
 
-                    <div className="section-field">
-                      <label htmlFor="habit-name">
-                        Custom Habit Name or Personal Label
-                      </label>
-                      <input
+                    <Field className="section-field">
+                      <FieldLabel>Custom Habit Name or Personal Label</FieldLabel>
+                      <Input
                         id="habit-name"
                         type="text"
                         value={habitForm.customName}
@@ -733,39 +755,43 @@ export default function Dashboard() {
                         }
                         placeholder={
                           selectedCategory?.name
-                            ? `Example: Comida, Entrenar, Estudiar, ${selectedCategory.name}`
-                            : "Example: Comida, Entrenar, Estudiar"
+                            ? `Example: Food, Training, Studying, ${selectedCategory.name}`
+                            : "Example: Food, Training, Studying"
                         }
-                        className="dashboard-input-fix"
+                        className="dashboard-input-modern"
+                        nativeInput
                       />
-                      <span className="field-hint">
+                      <FieldDescription>
                         You can keep the default category or write your own visible habit
-                        name, such as Comida, Entrenar, Estudiar, Cardio Morning, or
+                        name, such as Food, Training, Studying, Morning Cardio, or
                         Protein Lunch.
-                      </span>
-                    </div>
+                      </FieldDescription>
+                    </Field>
 
-                    <div className="section-field">
-                      <label htmlFor="habit-status">Status</label>
-                      <select
-                        id="habit-status"
+                    <Field className="section-field">
+                      <FieldLabel>Status</FieldLabel>
+                      <Select
                         value={habitForm.isActive ? "active" : "inactive"}
-                        onChange={(event) =>
-                          handleHabitFormChange("isActive", event.target.value)
+                        onValueChange={(value) =>
+                          handleHabitFormChange("isActive", value)
                         }
-                        className="dashboard-form-control dashboard-select-fix"
                       >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
+                        <SelectTrigger className="dashboard-select-modern">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectPopup>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectPopup>
+                      </Select>
+                    </Field>
 
                     <div className="habit-category-hint">
                       <strong>How this works</strong>
                       <p>
                         The system categories are predefined. You can still personalize
                         the habit name freely, and you can also add a custom visible
-                        category label like Estudio, Trabajo, or Lectura.
+                        category label such as Studying, Work, or Reading.
                       </p>
                     </div>
 
@@ -783,28 +809,26 @@ export default function Dashboard() {
                     )}
 
                     {habitFormError && (
-                      <div className="feedback-banner feedback-error">{habitFormError}</div>
+                      <FieldError className="feedback-banner feedback-error">
+                        {habitFormError}
+                      </FieldError>
                     )}
 
                     <div className="button-row">
-                      <button
+                      <Button
                         type="button"
-                        className="secondary-button"
+                        variant="outline"
                         onClick={closeHabitModal}
                       >
                         Cancel
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="submit"
-                        className="primary-button"
+                        loading={isSavingHabit}
                         disabled={isSavingHabit}
                       >
-                        {isSavingHabit
-                          ? "Saving..."
-                          : habitModalMode === "edit"
-                            ? "Save Changes"
-                            : "Create Habit"}
-                      </button>
+                        {habitModalMode === "edit" ? "Save Changes" : "Create Habit"}
+                      </Button>
                     </div>
                   </form>
                 </CardContent>
@@ -831,7 +855,7 @@ export default function Dashboard() {
             <Card className="panel-card premium-card panel-card-premium">
               <CardHeader className="panel-header">
                 <CardTitle>Current Habits</CardTitle>
-                <span className="tag">Live Data</span>
+                <Badge variant="success">Live Data</Badge>
               </CardHeader>
 
               <CardContent>
@@ -868,21 +892,9 @@ export default function Dashboard() {
                           <div className="habit-item-content">
                             <div className="habit-title-row">
                               <h4>{habit.customName || habit.category?.name}</h4>
-                              <span
-                                className={`status-badge ${
-                                  habit.isActive === false
-                                    ? "pending"
-                                    : isCompleted
-                                      ? "completed"
-                                      : "progress"
-                                }`}
-                              >
-                                {habit.isActive === false
-                                  ? "Inactive"
-                                  : isCompleted
-                                    ? "Completed today"
-                                    : "Active"}
-                              </span>
+                              <Badge variant={getHabitBadgeVariant(habit, isCompleted)}>
+                                {getHabitBadgeText(habit, isCompleted)}
+                              </Badge>
                             </div>
 
                             <p>
@@ -895,47 +907,50 @@ export default function Dashboard() {
                           </div>
 
                           <div className="habit-item-actions">
-                            <button
+                            <Button
                               type="button"
-                              className="secondary-button small-button"
+                              variant="outline"
+                              size="sm"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 openEditHabitModal(habit);
                               }}
                             >
                               Edit
-                            </button>
+                            </Button>
 
-                            <button
+                            <Button
                               type="button"
-                              className="danger-button small-button"
+                              variant="destructive"
+                              size="sm"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleDeleteHabit(habit.id);
                               }}
                             >
                               Delete
-                            </button>
+                            </Button>
 
-                            <button
+                            <Button
                               type="button"
+                              size="sm"
+                              variant={
+                                isCompleted || habit.isActive === false
+                                  ? "secondary"
+                                  : "default"
+                              }
                               disabled={habit.isActive === false}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 handleHabitToggle(habit.id, isCompleted);
                               }}
-                              className={
-                                isCompleted || habit.isActive === false
-                                  ? "secondary-button small-button"
-                                  : "primary-button small-button"
-                              }
                             >
                               {habit.isActive === false
                                 ? "Inactive"
                                 : isCompleted
                                   ? "Completed"
                                   : "Mark Complete"}
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       );
@@ -1004,20 +1019,20 @@ export default function Dashboard() {
                     </div>
 
                     <div className="button-row">
-                      <button
+                      <Button
                         type="button"
-                        className="secondary-button"
+                        variant="outline"
                         onClick={() => openEditHabitModal(selectedHabit)}
                       >
                         Edit Habit
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        className="danger-button"
+                        variant="destructive"
                         onClick={() => handleDeleteHabit(selectedHabit.id)}
                       >
                         Delete Habit
-                      </button>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1026,7 +1041,7 @@ export default function Dashboard() {
               <Card className="panel-card premium-card panel-card-premium">
                 <CardHeader className="panel-header">
                   <CardTitle>Progress Overview</CardTitle>
-                  <span className="tag">Chart</span>
+                  <Badge variant="info">Chart</Badge>
                 </CardHeader>
 
                 <CardContent>
@@ -1037,7 +1052,7 @@ export default function Dashboard() {
               <Card className="panel-card premium-card panel-card-premium">
                 <CardHeader className="panel-header">
                   <CardTitle>Quick Summary</CardTitle>
-                  <span className="tag">Insights</span>
+                  <Badge variant="secondary">Insights</Badge>
                 </CardHeader>
 
                 <CardContent>
@@ -1054,7 +1069,7 @@ export default function Dashboard() {
               <Card className="panel-card premium-card panel-card-premium">
                 <CardHeader className="panel-header">
                   <CardTitle>Weekly Completion</CardTitle>
-                  <span className="tag">Analytics</span>
+                  <Badge variant="success">Analytics</Badge>
                 </CardHeader>
 
                 <CardContent>
@@ -1074,7 +1089,7 @@ export default function Dashboard() {
               <Card className="panel-card premium-card panel-card-premium">
                 <CardHeader className="panel-header">
                   <CardTitle>Status Breakdown</CardTitle>
-                  <span className="tag">Summary</span>
+                  <Badge variant="outline">Summary</Badge>
                 </CardHeader>
 
                 <CardContent>
