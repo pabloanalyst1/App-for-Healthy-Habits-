@@ -1,5 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Flame,
+  Target,
+  CheckCircle2,
+  Flag,
+  LayoutDashboard,
+  UserCircle2,
+  ListChecks,
+  Settings2,
+  Wrench,
+  Activity,
+  LineChart,
+  Sparkles,
+  BarChart3,
+  Eye,
+} from "lucide-react";
 import metricsService from "../services/metricsService";
 import authService from "../services/authService";
 import MetricsChart from "../components/MetricsChart";
@@ -448,10 +464,30 @@ export default function Dashboard() {
   const estimatedStreak = dashboardData?.currentStreak ?? 0;
 
   const summaryCards = [
-    { title: "Current Streak", value: `${estimatedStreak} days` },
-    { title: "Completion Rate", value: `${completionRate}%` },
-    { title: "Habits Completed", value: `${completedHabits} / ${totalHabits}` },
-    { title: "Active Goals", value: `${activeHabits}` },
+    {
+      title: "Current Streak",
+      value: `${estimatedStreak} days`,
+      icon: <Flame size={20} className="summary-card-icon flame-icon" />,
+      accentClass: "summary-accent-orange",
+    },
+    {
+      title: "Completion Rate",
+      value: `${completionRate}%`,
+      icon: <Target size={20} className="summary-card-icon" />,
+      accentClass: "summary-accent-indigo",
+    },
+    {
+      title: "Habits Completed",
+      value: `${completedHabits} / ${totalHabits}`,
+      icon: <CheckCircle2 size={20} className="summary-card-icon success-icon" />,
+      accentClass: "summary-accent-green",
+    },
+    {
+      title: "Active Goals",
+      value: `${activeHabits}`,
+      icon: <Flag size={20} className="summary-card-icon accent-icon" />,
+      accentClass: "summary-accent-blue",
+    },
   ];
 
   const getVisibleCategoryName = (habit) => {
@@ -534,7 +570,7 @@ export default function Dashboard() {
               <div className="sidebar-logo">{fullName.charAt(0).toUpperCase()}</div>
             )}
 
-            <div>
+            <div className="sidebar-brand-text">
               <h2>{fullName}</h2>
               <p>{username}</p>
             </div>
@@ -544,7 +580,10 @@ export default function Dashboard() {
             <span className="sidebar-label">Navigation</span>
 
             <button className="sidebar-link active-link" type="button">
-              Dashboard
+              <span className="sidebar-link-content">
+                <LayoutDashboard size={16} />
+                <span>Dashboard</span>
+              </span>
             </button>
 
             <button
@@ -552,7 +591,10 @@ export default function Dashboard() {
               type="button"
               onClick={() => navigate("/profile")}
             >
-              Profile
+              <span className="sidebar-link-content">
+                <UserCircle2 size={16} />
+                <span>Profile</span>
+              </span>
             </button>
 
             <button
@@ -560,7 +602,21 @@ export default function Dashboard() {
               type="button"
               onClick={() => navigate("/habits")}
             >
-              Habits
+              <span className="sidebar-link-content">
+                <ListChecks size={16} />
+                <span>Habits</span>
+              </span>
+            </button>
+
+            <button
+              className="sidebar-link"
+              type="button"
+              onClick={() => navigate("/tools")}
+            >
+              <span className="sidebar-link-content">
+                <Wrench size={16} />
+                <span>Tools</span>
+              </span>
             </button>
 
             <button
@@ -568,7 +624,10 @@ export default function Dashboard() {
               type="button"
               onClick={() => navigate("/settings")}
             >
-              Settings
+              <span className="sidebar-link-content">
+                <Settings2 size={16} />
+                <span>Settings</span>
+              </span>
             </button>
           </div>
 
@@ -609,6 +668,10 @@ export default function Dashboard() {
             <div className="top-bar-actions">
               <Button variant="outline" onClick={() => navigate("/profile")}>
                 Edit Profile
+              </Button>
+
+              <Button variant="outline" onClick={() => navigate("/tools")}>
+                Open Tools
               </Button>
 
               <Button onClick={openCreateHabitModal}>+ Add Habit</Button>
@@ -840,11 +903,14 @@ export default function Dashboard() {
             {summaryCards.map((card) => (
               <Card
                 key={card.title}
-                className="summary-card premium-card summary-card-premium"
+                className={`summary-card premium-card summary-card-premium ${card.accentClass}`}
                 size="sm"
               >
                 <CardContent className="summary-card-content">
-                  <p>{card.title}</p>
+                  <div className="summary-card-top">
+                    <div className="summary-card-icon-wrap">{card.icon}</div>
+                    <p>{card.title}</p>
+                  </div>
                   <h2>{card.value}</h2>
                 </CardContent>
               </Card>
@@ -852,9 +918,14 @@ export default function Dashboard() {
           </div>
 
           <div className="premium-dashboard-grid">
-            <Card className="panel-card premium-card panel-card-premium">
+            <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
               <CardHeader className="panel-header">
-                <CardTitle>Current Habits</CardTitle>
+                <div className="panel-title-group">
+                  <div className="panel-title-icon panel-title-icon-green">
+                    <ListChecks size={16} />
+                  </div>
+                  <CardTitle>Current Habits</CardTitle>
+                </div>
                 <Badge variant="success">Live Data</Badge>
               </CardHeader>
 
@@ -879,9 +950,9 @@ export default function Dashboard() {
                       return (
                         <div
                           key={habit.id}
-                          className={`habit-item premium-habit-item ${
+                          className={`habit-item premium-habit-item premium-habit-hover ${
                             habit.isActive === false ? "inactive-habit" : ""
-                          }`}
+                          } ${isSelected ? "premium-habit-selected" : ""}`}
                           style={{
                             borderColor: isSelected ? "#22c55e" : undefined,
                             background: isSelected ? "#ecfdf5" : undefined,
@@ -962,9 +1033,14 @@ export default function Dashboard() {
 
             <div className="premium-side-column">
               {selectedHabit && (
-                <Card className="panel-card premium-card panel-card-premium">
+                <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
                   <CardHeader className="panel-header">
-                    <CardTitle>Habit Preview</CardTitle>
+                    <div className="panel-title-group">
+                      <div className="panel-title-icon panel-title-icon-slate">
+                        <Eye size={16} />
+                      </div>
+                      <CardTitle>Habit Preview</CardTitle>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setSelectedHabit(null)}
@@ -1038,9 +1114,14 @@ export default function Dashboard() {
                 </Card>
               )}
 
-              <Card className="panel-card premium-card panel-card-premium">
+              <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
                 <CardHeader className="panel-header">
-                  <CardTitle>Progress Overview</CardTitle>
+                  <div className="panel-title-group">
+                    <div className="panel-title-icon panel-title-icon-emerald">
+                      <LineChart size={16} />
+                    </div>
+                    <CardTitle>Progress Overview</CardTitle>
+                  </div>
                   <Badge variant="info">Chart</Badge>
                 </CardHeader>
 
@@ -1049,9 +1130,14 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="panel-card premium-card panel-card-premium">
+              <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
                 <CardHeader className="panel-header">
-                  <CardTitle>Quick Summary</CardTitle>
+                  <div className="panel-title-group">
+                    <div className="panel-title-icon panel-title-icon-violet">
+                      <Sparkles size={16} />
+                    </div>
+                    <CardTitle>Quick Summary</CardTitle>
+                  </div>
                   <Badge variant="secondary">Insights</Badge>
                 </CardHeader>
 
@@ -1066,9 +1152,14 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="panel-card premium-card panel-card-premium">
+              <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
                 <CardHeader className="panel-header">
-                  <CardTitle>Weekly Completion</CardTitle>
+                  <div className="panel-title-group">
+                    <div className="panel-title-icon panel-title-icon-green">
+                      <Activity size={16} />
+                    </div>
+                    <CardTitle>Weekly Completion</CardTitle>
+                  </div>
                   <Badge variant="success">Analytics</Badge>
                 </CardHeader>
 
@@ -1086,9 +1177,14 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="panel-card premium-card panel-card-premium">
+              <Card className="panel-card premium-card panel-card-premium dashboard-lift-card">
                 <CardHeader className="panel-header">
-                  <CardTitle>Status Breakdown</CardTitle>
+                  <div className="panel-title-group">
+                    <div className="panel-title-icon panel-title-icon-blue">
+                      <BarChart3 size={16} />
+                    </div>
+                    <CardTitle>Status Breakdown</CardTitle>
+                  </div>
                   <Badge variant="outline">Summary</Badge>
                 </CardHeader>
 

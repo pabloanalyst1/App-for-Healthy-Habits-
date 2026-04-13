@@ -1,36 +1,54 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import userService from '../services/userService';
-import authService from '../services/authService';
-import '../styles/auth.css';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import userService from "../services/userService";
+import authService from "../services/authService";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field, FieldLabel, FieldDescription } from "../components/ui/field";
+import { Input } from "../components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectPopup,
+  SelectItem,
+} from "../components/ui/select";
+import "../styles/auth.css";
 
 export default function Settings() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState({
-    name: '',
-    email: '',
+    name: "",
+    email: "",
     preferences: {
       darkMode: false,
       notifications: true,
-      language: 'en',
-    }
+      language: "en",
+    },
   });
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     preferences: {
       darkMode: false,
       notifications: true,
-      language: 'en',
-    }
+      language: "en",
+    },
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
-      navigate('/');
+      navigate("/");
       return;
     }
     loadProfile();
@@ -39,67 +57,66 @@ export default function Settings() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError("");
       const data = await userService.getProfile();
       setProfile(data);
       setFormData({
-        name: data.name || '',
+        name: data.name || "",
         preferences: data.preferences || {
           darkMode: false,
           notifications: true,
-          language: 'en',
-        }
+          language: "en",
+        },
       });
     } catch (err) {
-      console.error('Failed to load profile:', err);
-      setError('Failed to load profile. Please try again.');
+      console.error("Failed to load profile:", err);
+      setError("Failed to load profile. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
   };
 
-  const handlePreferenceChange = (e) => {
-    const { name, type, checked, value } = e.target;
+  const handlePreferenceChange = (event) => {
+    const { name, type, checked, value } = event.target;
     setFormData({
       ...formData,
       preferences: {
         ...formData.preferences,
-        [name]: type === 'checkbox' ? checked : value
-      }
+        [name]: type === "checkbox" ? checked : value,
+      },
     });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     if (!formData.name.trim()) {
-      setError('Name is required');
+      setError("Name is required");
       return;
     }
 
     try {
       setSaving(true);
-      setError('');
-      setSuccess('');
-      
+      setError("");
+      setSuccess("");
+
       await userService.updateProfile(formData.name, formData.preferences);
-      
-      setSuccess('Profile updated successfully!');
-      setTimeout(() => setSuccess(''), 3000);
-      
-      // Reload profile to confirm changes
+
+      setSuccess("Profile updated successfully!");
+      setTimeout(() => setSuccess(""), 3000);
+
       await loadProfile();
     } catch (err) {
-      console.error('Failed to update profile:', err);
-      setError(err || 'Failed to update profile. Please try again.');
+      console.error("Failed to update profile:", err);
+      setError(err || "Failed to update profile. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -107,292 +124,164 @@ export default function Settings() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div>Loading...</div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div>Loading settings...</div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #ecfdf5 0%, #f8fafc 45%, #eef2ff 100%)',
-        fontFamily: 'Arial, sans-serif',
-        padding: '28px',
-      }}
-    >
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        {/* Header */}
-        <div
-          style={{
-            background: 'white',
-            borderRadius: '18px',
-            padding: '24px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
-            marginBottom: '24px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
+    <div className="section-page">
+      <div className="section-container">
+        <div className="section-top-bar premium-top-bar">
           <div>
-            <h1
-              style={{
-                margin: 0,
-                color: '#15803d',
-                fontSize: '28px',
-              }}
-            >
-              Settings
-            </h1>
-            <p
-              style={{
-                margin: '6px 0 0 0',
-                color: '#64748b',
-                fontSize: '14px',
-              }}
-            >
-              Manage your profile and preferences
+            <p className="topbar-kicker">Preferences</p>
+            <h1>Settings</h1>
+            <p className="topbar-description">
+              Manage your profile settings and personal preferences.
             </p>
           </div>
 
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              padding: '10px 16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              fontSize: '14px',
-            }}
-          >
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
             Back to Dashboard
-          </button>
+          </Button>
         </div>
 
-        {/* Form */}
-        <div
-          style={{
-            background: 'white',
-            borderRadius: '18px',
-            padding: '24px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.08)',
-          }}
-        >
-          {error && (
-            <div
-              style={{
-                background: '#fee2e2',
-                color: '#dc2626',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                marginBottom: '16px',
-              }}
-            >
-              {error}
+        <Card className="form-card premium-card settings-form-card">
+          <CardHeader className="panel-header">
+            <div>
+              <CardTitle>Account Preferences</CardTitle>
+              <CardDescription className="settings-card-description">
+                Update your name, language, notifications, and display preferences.
+              </CardDescription>
             </div>
-          )}
+            <Badge variant="info">User Settings</Badge>
+          </CardHeader>
 
-          {success && (
-            <div
-              style={{
-                background: '#dcfce7',
-                color: '#166534',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                marginBottom: '16px',
-              }}
-            >
-              {success}
-            </div>
-          )}
+          <CardContent>
+            {error && (
+              <div className="feedback-banner feedback-error">
+                {error}
+              </div>
+            )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Email (read-only) */}
-            <div style={{ marginBottom: '20px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: 'bold',
-                  color: '#374151',
-                }}
-              >
-                Email
-              </label>
-              <input
-                type="email"
-                value={profile.email}
-                disabled
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  background: '#f3f4f6',
-                  color: '#64748b',
-                  boxSizing: 'border-box',
-                  cursor: 'not-allowed',
-                }}
-              />
-              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                Email cannot be changed
-              </p>
-            </div>
+            {success && (
+              <div className="feedback-banner feedback-success">
+                {success}
+              </div>
+            )}
 
-            {/* Name */}
-            <div style={{ marginBottom: '20px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontWeight: 'bold',
-                  color: '#374151',
-                }}
-              >
-                Full Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Enter your full name"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-
-            {/* Preferences Section */}
-            <div style={{ marginBottom: '24px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-              <h3
-                style={{
-                  margin: '0 0 16px 0',
-                  color: '#0f172a',
-                  fontSize: '16px',
-                }}
-              >
-                Preferences
-              </h3>
-
-              {/* Dark Mode */}
-              <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  name="darkMode"
-                  checked={formData.preferences.darkMode}
-                  onChange={handlePreferenceChange}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    cursor: 'pointer',
-                    marginRight: '8px',
-                  }}
+            <form className="section-form" onSubmit={handleSubmit}>
+              <Field className="section-field">
+                <FieldLabel>Email</FieldLabel>
+                <Input
+                  type="email"
+                  value={profile.email}
+                  disabled
+                  className="dashboard-input-modern settings-disabled-input"
+                  nativeInput
                 />
-                <label
-                  style={{
-                    fontWeight: '500',
-                    color: '#374151',
-                    cursor: 'pointer',
-                    margin: 0,
-                  }}
-                >
-                  Enable Dark Mode
-                </label>
-              </div>
+                <FieldDescription>
+                  Email cannot be changed from this screen.
+                </FieldDescription>
+              </Field>
 
-              {/* Notifications */}
-              <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  name="notifications"
-                  checked={formData.preferences.notifications}
-                  onChange={handlePreferenceChange}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    cursor: 'pointer',
-                    marginRight: '8px',
-                  }}
+              <Field className="section-field">
+                <FieldLabel>Full Name</FieldLabel>
+                <Input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Enter your full name"
+                  className="dashboard-input-modern"
+                  nativeInput
                 />
-                <label
-                  style={{
-                    fontWeight: '500',
-                    color: '#374151',
-                    cursor: 'pointer',
-                    margin: 0,
-                  }}
-                >
-                  Enable Notifications
-                </label>
+                <FieldDescription>
+                  This name will be used in your account profile.
+                </FieldDescription>
+              </Field>
+
+              <div className="settings-preferences-block">
+                <div className="settings-preferences-header">
+                  <h3>Preferences</h3>
+                  <p>Customize the way your account behaves.</p>
+                </div>
+
+                <div className="settings-toggle-grid">
+                  <label className="settings-toggle-card">
+                    <div>
+                      <strong>Enable Dark Mode</strong>
+                      <p>Switch to a darker visual appearance.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="darkMode"
+                      checked={formData.preferences.darkMode}
+                      onChange={handlePreferenceChange}
+                    />
+                  </label>
+
+                  <label className="settings-toggle-card">
+                    <div>
+                      <strong>Enable Notifications</strong>
+                      <p>Receive updates and reminders.</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name="notifications"
+                      checked={formData.preferences.notifications}
+                      onChange={handlePreferenceChange}
+                    />
+                  </label>
+                </div>
+
+                <Field className="section-field">
+                  <FieldLabel>Language</FieldLabel>
+                  <Select
+                    value={formData.preferences.language}
+                    onValueChange={(value) =>
+                      handlePreferenceChange({
+                        target: {
+                          name: "language",
+                          value,
+                          type: "select-one",
+                        },
+                      })
+                    }
+                  >
+                    <SelectTrigger className="dashboard-select-modern">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectPopup>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                    </SelectPopup>
+                  </Select>
+                  <FieldDescription>
+                    Choose the language you prefer for your account experience.
+                  </FieldDescription>
+                </Field>
               </div>
 
-              {/* Language */}
-              <div style={{ marginBottom: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    fontWeight: '500',
-                    color: '#374151',
-                  }}
-                >
-                  Language
-                </label>
-                <select
-                  name="language"
-                  value={formData.preferences.language}
-                  onChange={handlePreferenceChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="fr">Français</option>
-                  <option value="de">Deutsch</option>
-                </select>
+              <div className="button-row">
+                <Button type="submit" loading={saving} disabled={saving}>
+                  Save Changes
+                </Button>
               </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                width: '100%',
-                background: saving ? '#9ca3af' : '#15803d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '14px',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                cursor: saving ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </form>
-        </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

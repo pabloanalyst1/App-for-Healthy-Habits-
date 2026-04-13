@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import Habits from "./pages/Habits";
 import Settings from "./pages/Settings";
+import Tools from "./pages/Tools";
 import "./App.css";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/habits" element={<Habits />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/tools" element={<Tools />} />
       </Routes>
     </BrowserRouter>
   );
